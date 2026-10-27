@@ -30,3 +30,8 @@ https://script.google.com/macros/s/AKfycbxmmKbYwHgYaVMsDClzRYjNn6RhnR8c3cPcs9kFn
 - Script in "Bleubook Grader Test (Oakwood copy)" replaced with the Database version (saveExam/getExam/submitAnswers) and redeployed as Version 2 via Manage deployments > Edit > New version. URL unchanged.
 - Live test on bleubook.web.app: "Database Test Exam" saved from the teacher view; Exam_Database tab row EXAM-35104506 created; short student link loaded the exam from the database; submission as Test Student showed "Success! Your exam has been securely submitted."; the "Database Test Exam" tab holds the row with the answer under "Q1: Part A: Summarize the document."
 - All steps passed.
+
+## v4 app + script Version 4 (Timer at Submission) — verified 2026-10-27 09:03 ET
+- Grader script updated to the Timer version and deployed as Version 4 (URL unchanged). A fresh exam, "Timer Column Test" (EXAM-142149611), created a tab with headers: Timestamp | Timer at Submission | Student Name | Exam Title | Part A: Why did it matter? | Score | Teacher Feedback.
+- Test Student submitted after 38 seconds on the count-up stopwatch; the Timer at Submission cell recorded 0:38, matching the on-screen timer. Quirk: Sheets parses "00:38" as a time of day (formula bar shows 12:38:00 AM) though the cell displays 0:38.
+- Site is now at v5 (timer-limit input toggle fix); the setup tutorial embeds the current script for copy-paste.
