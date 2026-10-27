@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bleubook Simulator</title>
-    <!-- Include Quill.js for Rich Text Editing -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <style>
@@ -14,43 +13,23 @@
         .left-pane, .right-pane { width: 50%; padding: 25px; overflow-y: auto; background: white; border-right: 2px solid #ddd; box-sizing: border-box; }
         .right-pane { border-right: none; display: flex; flex-direction: column; }
         .footer { background: #eee; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #ddd; height: 65px; box-sizing: border-box; }
-        
-        /* Buttons */
         .btn { background: #0077c8; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background 0.2s; margin-right: 10px; }
         .btn:hover { background: #005a9c; }
         .btn-secondary { background: #6c757d; font-size: 14px; padding: 8px 15px; margin-top: 10px; }
-        .btn-secondary:hover { background: #5a6268; }
         .btn-success { background: #28a745; }
-        .btn-success:hover { background: #218838; }
-        
-        /* Teacher Setup */
         .setup-container { max-width: 900px; margin: 40px auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         input[type="text"], input[type="url"] { width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
         .hidden { display: none !important; }
-        
-        /* Quill Editors */
         .editor-container { height: 180px; margin-bottom: 50px; background: white; } 
-        
-        /* Question Builder */
         .question-block { border: 2px solid #e0e0e0; padding: 25px; margin-bottom: 30px; border-radius: 8px; background: #fdfdfd; }
         .part-block { border: 1px dashed #bbb; padding: 20px; margin-top: 20px; border-radius: 5px; background: white; }
-        
-        /* Student View */
         .student-part-container { margin-bottom: 30px; display: flex; flex-direction: column; }
         .student-prompt { font-weight: bold; margin-bottom: 10px; font-size: 1.1em; color: #333; }
         .student-answer-editor { min-height: 250px; margin-bottom: 50px; background: white; }
-        
-        /* Modals */
         .student-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: white; padding: 40px; border-radius: 8px; max-width: 500px; width: 90%; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-        
-        /* Tutorial Box */
+        .modal-content { background: white; padding: 40px; border-radius: 8px; max-width: 500px; width: 90%; text-align: center; }
         .tutorial-details { background: #eef6fc; border-left: 4px solid #0077c8; padding: 15px 20px; margin-bottom: 25px; border-radius: 4px; font-size: 14px; }
         .tutorial-details summary { font-weight: bold; cursor: pointer; color: #0077c8; outline: none; list-style-type: none; display: flex; align-items: center; font-size: 16px; }
-        .tutorial-details summary::-webkit-details-marker { display: none; }
-        .tutorial-details summary::before { content: '▶'; display: inline-block; width: 25px; font-size: 12px; transition: transform 0.2s; }
-        .tutorial-details[open] summary::before { transform: rotate(90deg); }
-        .code-block { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto; font-family: monospace; font-size: 13px; margin: 15px 0; border: 1px solid #000; text-align: left; }
     </style>
 </head>
 <body>
@@ -62,90 +41,45 @@
         <label><b>Exam Title:</b></label>
         <input type="text" id="exam-title" placeholder="e.g., APUSH Unit 4 DBQ">
         
-        <label><b>Google Apps Script Web App URL (Optional - For Auto-Grading):</b></label>
+        <label><b>Google Apps Script Web App URL (REQUIRED for saving images/exams):</b></label>
         <input type="url" id="sheet-url" placeholder="Paste your Web App URL here...">
         
         <details class="tutorial-details">
-            <summary>How to set up the "Magic Tab" Google Sheets auto-grader</summary>
+            <summary>How to set up the Google Sheets Database (Click to expand)</summary>
             <div style="margin-top: 15px; line-height: 1.6;">
+                <p>Because exams with images are too large for standard links, this app saves your exams directly to a hidden tab in your Google Sheet.</p>
                 <ol style="padding-left: 20px; margin: 0;">
-                    <li>Create a new Google Sheet.</li>
-                    <li>Click <b>Extensions > Apps Script</b>.</li>
-                    <li>Delete any code there, and paste the code block below.</li>
-                    <li>Click the <b>Save</b> icon.</li>
-                    <li>Click <b>Deploy > New deployment</b> (Select type: <b>Web app</b>).</li>
-                    <li>Set "Execute as" to <b>Me</b>, and "Who has access" to <b>Anyone</b>.</li>
-                    <li>Click Deploy, authorize the permissions, and copy the Web App URL!</li>
+                    <li>Open a Google Sheet and click <b>Extensions > Apps Script</b>.</li>
+                    <li>Paste the updated Database code provided to you.</li>
+                    <li>Click <b>Deploy > Manage deployments > New Version > Deploy</b>.</li>
+                    <li>Copy the Web App URL and paste it in the box above!</li>
                 </ol>
-                <div class="code-block">
-<pre style="margin:0;">function doPost(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var data = JSON.parse(e.postData.contents);
-  var examTitle = data.examTitle || "Untitled Exam";
-  
-  var sheet = ss.getSheetByName(examTitle);
-  
-  if (!sheet) {
-    sheet = ss.insertSheet(examTitle);
-    var headers = ["Timestamp", "Student Name", "Exam Title"];
-    
-    for (var i = 0; i < data.responses.length; i++) {
-      if (data.prompts && data.prompts[i]) {
-        headers.push(data.prompts[i]); 
-      } else {
-        headers.push("Response " + (i + 1));
-      }
-    }
-    sheet.appendRow(headers);
-    sheet.setFrozenRows(1);
-    sheet.getRange("1:1").setFontWeight("bold");
-  }
-  
-  var row = [new Date(), data.studentName, data.examTitle];
-  for (var i = 0; i < data.responses.length; i++) {
-    row.push(data.responses[i]);
-  }
-  
-  sheet.appendRow(row);
-  
-  return ContentService.createTextOutput(JSON.stringify({"status": "success"}))
-    .setMimeType(ContentService.MimeType.JSON);
-}</pre>
-                </div>
             </div>
         </details>
 
         <hr style="border: 1px solid #eee; margin: 30px 0;">
         <h2>Exam Questions</h2>
-        
-        <div id="questions-builder">
-            <!-- Questions will be injected here dynamically -->
-        </div>
-        
+        <div id="questions-builder"></div>
         <button class="btn btn-secondary" onclick="addQuestion()">+ Add Another Main Question</button>
-        
         <hr style="border: 1px solid #eee; margin: 30px 0;">
         
-        <button class="btn btn-success" style="width: 100%; font-size: 18px; padding: 15px;" onclick="generateLink()">Generate Student Link</button>
-        
+        <button class="btn btn-success" style="width: 100%; font-size: 18px; padding: 15px;" id="generate-btn" onclick="generateLink()">Save Exam & Generate Student Link</button>
         <div id="link-output" style="margin-top:25px; word-break: break-all; font-weight:bold; color: #00205b; background: #eef6fc; padding: 15px; border-radius: 5px; display: none;"></div>
     </div>
 
     <!-- STUDENT SIMULATOR VIEW -->
     <div id="student-view" class="hidden">
         <div class="header">
-            <div id="student-exam-title">Bleubook</div>
+            <div id="student-exam-title">Loading Exam...</div>
             <div style="font-family: monospace; font-size: 1.2em;">Timer: <span id="timer">00:00</span></div>
         </div>
-        <div class="container">
-            <!-- Left Side: Stimulus -->
+        <div class="container" id="exam-container" style="display:none;">
             <div class="left-pane" id="student-stimulus"></div>
-            <!-- Right Side: Prompts and Answers -->
             <div class="right-pane" id="student-parts-container"></div>
         </div>
         <div class="footer">
             <button class="btn" id="prev-btn" onclick="prevQuestion()">Previous</button>
-            <span id="question-tracker" style="font-weight: bold; color: #555;">Question 1 of 1</span>
+            <span id="question-tracker" style="font-weight: bold; color: #555;">Loading...</span>
             <button class="btn" id="next-btn" onclick="nextQuestion()">Next</button>
             <button class="btn btn-success hidden" id="finish-btn" onclick="showSubmission()">Finish Exam</button>
         </div>
@@ -157,93 +91,70 @@
             <h2 style="color: #00205b; margin-top:0;">Exam Complete</h2>
             <p>Enter your full name to submit your responses.</p>
             <input type="text" id="student-name" placeholder="First and Last Name" style="width: 100%;">
-            <button class="btn btn-success" onclick="submitToSheets()" style="width: 100%;">Submit to Teacher</button>
+            <button class="btn btn-success" id="submit-final-btn" onclick="submitToSheets()" style="width: 100%;">Submit to Teacher</button>
             <p id="submit-status" style="margin-top: 20px; font-weight: bold; font-size: 1.1em;"></p>
         </div>
     </div>
 
     <script>
-        /* --- GLOBAL VARIABLES --- */
         let examData = null;
         let currentQuestionIndex = 0;
-        
-        // Editor Registries
-        let teacherStimulusEditors = []; // Array of Quill instances
-        let teacherPromptEditors = [];   // Array of Arrays of Quill instances [[q1p1, q1p2], [q2p1]]
-        let studentEditors = [];         // Quill instances for current active question parts
-        
-        // Student Data Storage: answers[questionIndex][partIndex] = string
+        let teacherStimulusEditors = []; 
+        let teacherPromptEditors = [];   
+        let studentEditors = [];         
         let studentAnswers = [];         
-        
-        // Timer
         let timerInterval;
         let secondsElapsed = 0;
+        let globalSheetUrl = ""; // Passed via URL for the student to submit back
 
-        /* --- INITIALIZATION --- */
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
-            const encodedData = urlParams.get('data');
+            const examId = urlParams.get('id');
+            globalSheetUrl = urlParams.get('url'); // Store grading URL for submission
             
-            if (encodedData) {
-                // We are in Student Mode
+            if (examId && globalSheetUrl) {
                 document.getElementById('teacher-view').classList.add('hidden');
                 document.getElementById('student-view').classList.remove('hidden');
-                loadStudentView(encodedData);
+                fetchStudentExam(examId, globalSheetUrl);
             } else {
-                // We are in Teacher Mode
-                addQuestion(); // Add the first empty question by default
+                addQuestion(); 
             }
         };
 
-        /* =========================================================
-           TEACHER MODE FUNCTIONS
-           ========================================================= */
-
         function addQuestion() {
             const qIndex = teacherStimulusEditors.length;
-            teacherPromptEditors.push([]); // Initialize parts array for this question
-            
+            teacherPromptEditors.push([]); 
             const builder = document.getElementById('questions-builder');
-            
             const qBlock = document.createElement('div');
             qBlock.className = 'question-block';
             qBlock.id = `q-block-${qIndex}`;
-            
             qBlock.innerHTML = `
                 <h3 style="margin-top:0; color:#00205b;">Question ${qIndex + 1}</h3>
-                <label><b>Stimulus / Documents (Left Side):</b></label>
+                <label><b>Stimulus / Documents (Images Supported!):</b></label>
                 <div class="editor-container" id="stimulus-editor-${qIndex}"></div>
                 <div id="parts-container-${qIndex}"></div>
                 <button class="btn btn-secondary" onclick="addPart(${qIndex})">+ Add Text Box / Part</button>
             `;
-            
             builder.appendChild(qBlock);
             
-            // Initialize Stimulus Quill Editor
             const stimQuill = new Quill(`#stimulus-editor-${qIndex}`, { 
                 theme: 'snow',
-                modules: { toolbar: [ [{ 'header': [1, 2, false] }], ['bold', 'italic', 'underline'], ['image', 'link'], [{ 'list': 'bullet' }, { 'list': 'ordered' }] ] }
+                modules: { toolbar: [ [{ 'header': [1, 2, false] }], ['bold', 'italic', 'underline'], ['image', 'link'], [{ 'list': 'bullet' }] ] }
             });
             teacherStimulusEditors.push(stimQuill);
-            
-            // Add Part A by default
             addPart(qIndex);
         }
 
         function addPart(qIndex) {
             const pIndex = teacherPromptEditors[qIndex].length;
             const partsContainer = document.getElementById(`parts-container-${qIndex}`);
-            
             const pBlock = document.createElement('div');
             pBlock.className = 'part-block';
             pBlock.innerHTML = `
-                <label><b>Prompt / Question Part ${pIndex + 1} (Right Side):</b></label>
+                <label><b>Prompt / Question Part ${pIndex + 1}:</b></label>
                 <div class="editor-container" id="prompt-editor-${qIndex}-${pIndex}"></div>
             `;
-            
             partsContainer.appendChild(pBlock);
-            
-            // Initialize Prompt Quill Editor
             const promptQuill = new Quill(`#prompt-editor-${qIndex}-${pIndex}`, { 
                 theme: 'snow',
                 modules: { toolbar: [ ['bold', 'italic', 'underline'], ['image'], [{ 'list': 'bullet' }] ] }
@@ -255,85 +166,101 @@
             const title = document.getElementById('exam-title').value || 'Bleubook FRQ';
             const sheetUrl = document.getElementById('sheet-url').value;
             
+            if (!sheetUrl) {
+                alert("You MUST provide your Google Web App URL to save exams with images.");
+                return;
+            }
+
+            const btn = document.getElementById('generate-btn');
+            btn.innerText = "Saving to Database...";
+            btn.disabled = true;
+
             const questionsData = [];
-            
-            // Gather all data from editors
             for (let i = 0; i < teacherStimulusEditors.length; i++) {
                 const stimulusHTML = teacherStimulusEditors[i].root.innerHTML;
                 const partsData = [];
-                
                 for (let j = 0; j < teacherPromptEditors[i].length; j++) {
                     partsData.push(teacherPromptEditors[i][j].root.innerHTML);
                 }
-                
-                questionsData.push({
-                    stimulus: stimulusHTML,
-                    prompts: partsData
-                });
+                questionsData.push({ stimulus: stimulusHTML, prompts: partsData });
             }
 
             const payload = {
-                title: title,
-                sheetUrl: sheetUrl,
-                questions: questionsData
+                action: "saveExam",
+                examData: { title: title, questions: questionsData }
             };
 
-            // Base64 encode the payload to hide it in the URL
-            const encoded = btoa(encodeURIComponent(JSON.stringify(payload)));
-            const link = window.location.href.split('?')[0] + '?data=' + encoded;
-            
-            const outputDiv = document.getElementById('link-output');
-            outputDiv.style.display = 'block';
-            outputDiv.innerHTML = `Share this link with students:<br><br><a href="${link}" target="_blank" style="color:#0077c8;">${link}</a>`;
-            
-            // Scroll to the link
-            outputDiv.scrollIntoView({ behavior: 'smooth' });
+            fetch(sheetUrl, {
+                method: 'POST',
+                body: JSON.stringify(payload),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.examId) {
+                    const cleanBaseUrl = window.location.href.split('?')[0];
+                    const link = `${cleanBaseUrl}?id=${data.examId}&url=${encodeURIComponent(sheetUrl)}`;
+                    const outputDiv = document.getElementById('link-output');
+                    outputDiv.style.display = 'block';
+                    outputDiv.innerHTML = `Exam Saved! Share this short link with students:<br><br><a href="${link}" target="_blank" style="color:#0077c8;">${link}</a>`;
+                }
+                btn.innerText = "Save Exam & Generate Student Link";
+                btn.disabled = false;
+            })
+            .catch(err => {
+                alert("Error saving exam. Check your Web App URL.");
+                btn.innerText = "Save Exam & Generate Student Link";
+                btn.disabled = false;
+            });
         }
 
-        /* =========================================================
-           STUDENT MODE FUNCTIONS
-           ========================================================= */
+        function fetchStudentExam(examId, sheetUrl) {
+            const payload = { action: "getExam", examId: examId };
 
-        function loadStudentView(encodedData) {
-            try {
-                examData = JSON.parse(decodeURIComponent(atob(encodedData)));
-            } catch (e) {
-                alert("Error loading exam data. The link might be broken.");
-                return;
-            }
-            
-            document.getElementById('student-exam-title').innerText = examData.title;
-            
-            // Initialize student answers storage
-            for(let i=0; i < examData.questions.length; i++) {
-                studentAnswers.push(new Array(examData.questions[i].prompts.length).fill(""));
-            }
-            
-            startTimer();
-            renderQuestion(0);
+            fetch(sheetUrl, {
+                method: 'POST',
+                body: JSON.stringify(payload),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.error) {
+                    document.getElementById('student-exam-title').innerText = "Exam Not Found";
+                    return;
+                }
+                examData = data;
+                document.getElementById('student-exam-title').innerText = examData.title;
+                document.getElementById('exam-container').style.display = 'flex';
+                
+                for(let i=0; i < examData.questions.length; i++) {
+                    studentAnswers.push(new Array(examData.questions[i].prompts.length).fill(""));
+                }
+                
+                startTimer();
+                renderQuestion(0);
+            })
+            .catch(err => {
+                document.getElementById('student-exam-title').innerText = "Database Connection Error";
+            });
         }
 
         function startTimer() {
-            const timerDisplay = document.getElementById('timer');
             timerInterval = setInterval(() => {
                 secondsElapsed++;
                 let m = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
                 let s = (secondsElapsed % 60).toString().padStart(2, '0');
-                timerDisplay.innerText = `${m}:${s}`;
+                document.getElementById('timer').innerText = `${m}:${s}`;
             }, 1000);
         }
 
         function renderQuestion(index) {
             currentQuestionIndex = index;
             const q = examData.questions[index];
-            
-            // 1. Render Left Side
             document.getElementById('student-stimulus').innerHTML = q.stimulus;
             
-            // 2. Render Right Side
             const partsContainer = document.getElementById('student-parts-container');
-            partsContainer.innerHTML = ''; // Clear previous parts
-            studentEditors = []; // Reset editor tracking for this question
+            partsContainer.innerHTML = ''; 
+            studentEditors = []; 
             
             for (let i = 0; i < q.prompts.length; i++) {
                 const partDiv = document.createElement('div');
@@ -344,29 +271,18 @@
                 `;
                 partsContainer.appendChild(partDiv);
                 
-                // Init Quill for this part
                 const qEditor = new Quill(`#student-editor-${i}`, {
                     theme: 'snow',
                     placeholder: 'Type your response here...',
-                    modules: { toolbar: [ ['bold', 'italic', 'underline'], [{ 'list': 'bullet' }, { 'list': 'ordered' }] ] }
+                    modules: { toolbar: [ ['bold', 'italic', 'underline'], [{ 'list': 'bullet' }] ] }
                 });
                 
-                // Load previously typed answer if it exists
-                if (studentAnswers[index][i]) {
-                    qEditor.root.innerHTML = studentAnswers[index][i];
-                }
-                
-                // Autosave logic
-                qEditor.on('text-change', function() {
-                    studentAnswers[currentQuestionIndex][i] = qEditor.root.innerHTML;
-                });
-                
+                if (studentAnswers[index][i]) qEditor.root.innerHTML = studentAnswers[index][i];
+                qEditor.on('text-change', () => { studentAnswers[currentQuestionIndex][i] = qEditor.root.innerHTML; });
                 studentEditors.push(qEditor);
             }
             
-            // 3. Update Footer Navigation
             document.getElementById('question-tracker').innerText = `Question ${index + 1} of ${examData.questions.length}`;
-            
             document.getElementById('prev-btn').disabled = (index === 0);
             
             if (index === examData.questions.length - 1) {
@@ -376,32 +292,15 @@
                 document.getElementById('next-btn').classList.remove('hidden');
                 document.getElementById('finish-btn').classList.add('hidden');
             }
-            
-            // Scroll right pane to top on question change
-            document.querySelector('.right-pane').scrollTop = 0;
-            document.querySelector('.left-pane').scrollTop = 0;
         }
 
-        function nextQuestion() {
-            if (currentQuestionIndex < examData.questions.length - 1) {
-                renderQuestion(currentQuestionIndex + 1);
-            }
-        }
-
-        function prevQuestion() {
-            if (currentQuestionIndex > 0) {
-                renderQuestion(currentQuestionIndex - 1);
-            }
-        }
+        function nextQuestion() { if (currentQuestionIndex < examData.questions.length - 1) renderQuestion(currentQuestionIndex + 1); }
+        function prevQuestion() { if (currentQuestionIndex > 0) renderQuestion(currentQuestionIndex - 1); }
 
         function showSubmission() {
             document.getElementById('submit-modal').classList.remove('hidden');
-            clearInterval(timerInterval); // Stop timer
+            clearInterval(timerInterval);
         }
-
-        /* =========================================================
-           SUBMISSION & GRADING FUNCTIONS
-           ========================================================= */
 
         function submitToSheets() {
             const name = document.getElementById('student-name').value;
@@ -413,40 +312,29 @@
                 return;
             }
 
-            if (!examData.sheetUrl) {
-                statusLabel.innerText = "Teacher did not provide a grading link. Please copy/paste your answers manually.";
-                statusLabel.style.color = "#856404";
-                return;
-            }
-
-            statusLabel.innerText = "Submitting to teacher...";
+            statusLabel.innerText = "Grading... Submitting to teacher...";
             statusLabel.style.color = "#00205b";
+            document.getElementById('submit-final-btn').disabled = true;
 
-            // Flatten data for the spreadsheet
             let flatAnswers = [];
             let flatPrompts = [];
             
             for (let q = 0; q < examData.questions.length; q++) {
                 for (let p = 0; p < examData.questions[q].prompts.length; p++) {
-                    // Clean HTML tags out of the prompt for the Sheet header
-                    let cleanPromptText = examData.questions[q].prompts[p].replace(/<[^>]*>?/gm, ' ').trim();
-                    // Clean HTML tags out of the answer for the Sheet body
-                    let cleanAnswerText = (studentAnswers[q][p] || "").replace(/<[^>]*>?/gm, ' ').trim();
-                    
-                    flatPrompts.push(`Q${q+1}: ${cleanPromptText}`);
-                    flatAnswers.push(cleanAnswerText);
+                    flatPrompts.push(`Q${q+1}: ` + examData.questions[q].prompts[p].replace(/<[^>]*>?/gm, ' ').trim());
+                    flatAnswers.push((studentAnswers[q][p] || "").replace(/<[^>]*>?/gm, ' ').trim());
                 }
             }
 
             const payload = {
+                action: "submitAnswers",
                 studentName: name,
                 examTitle: examData.title,
                 prompts: flatPrompts,
                 responses: flatAnswers
             };
 
-            // Using text/plain avoids complex CORS preflight issues with Apps Script
-            fetch(examData.sheetUrl, {
+            fetch(globalSheetUrl, {
                 method: 'POST',
                 body: JSON.stringify(payload),
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' } 
@@ -455,11 +343,12 @@
             .then(data => {
                 statusLabel.innerText = "Success! Your exam has been securely submitted.";
                 statusLabel.style.color = "#28a745";
-                document.querySelector('#submit-modal .btn').classList.add('hidden'); // Hide submit button to prevent double-submit
+                document.getElementById('submit-final-btn').classList.add('hidden');
             })
             .catch(err => {
-                statusLabel.innerText = "Network Error submitting. Please copy/paste your answers instead.";
+                statusLabel.innerText = "Network Error submitting. Please alert your teacher.";
                 statusLabel.style.color = "#dc3545";
+                document.getElementById('submit-final-btn').disabled = false;
             });
         }
     </script>
