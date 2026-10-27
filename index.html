@@ -13,8 +13,8 @@
         .left-pane, .right-pane { width: 50%; padding: 30px; overflow-y: auto; background: white; border-right: 2px solid #ddd; box-sizing: border-box; }
         .right-pane { border-right: none; display: flex; flex-direction: column; background: #fafafa; }
         .footer { background: #eee; padding: 15px 25px; display: flex; justify-content: center; align-items: center; border-top: 2px solid #ddd; height: 65px; box-sizing: border-box; }
-        .btn { background: #0077c8; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background 0.2s; margin-right: 10px; }
-        .btn:hover { background: #005a9c; }
+        .btn { background: #324dc7; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background 0.2s; margin-right: 10px; }
+        .btn:hover { background: #273fa8; }
         .btn-secondary { background: #6c757d; font-size: 14px; padding: 8px 15px; margin-top: 10px; }
         .btn-success { background: #28a745; }
         .btn-success:hover { background: #218838; }
@@ -26,8 +26,8 @@
         .hidden { display: none !important; }
         .editor-container { height: 150px; margin-bottom: 40px; background: white; } 
         
-        .question-block { border: 2px solid #e0e0e0; padding: 25px; margin-bottom: 30px; border-radius: 8px; background: #fdfdfd; }
-        .part-block { border: 1px dashed #bbb; padding: 20px; margin-top: 20px; border-radius: 5px; background: white; }
+        .question-block { border: 1px solid #e0e0e0; padding: 25px; margin-bottom: 30px; border-radius: 8px; background: white; }
+        .part-block { border: 1px solid #e6e6e6; padding: 20px; margin-top: 20px; border-radius: 5px; background: #fdfdfd; }
         
         .student-stimulus-block { margin-bottom: 50px; border-bottom: 2px solid #eee; padding-bottom: 30px; }
         .student-part-container { margin-bottom: 45px; display: flex; flex-direction: column; }
@@ -35,10 +35,10 @@
         .student-answer-editor { min-height: 120px; background: white; border-radius: 4px; }
         .word-count { text-align: right; font-size: 0.85em; color: #666; margin-top: 5px; font-style: italic; }
         
-        .student-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .student-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: white; padding: 40px; border-radius: 8px; max-width: 500px; width: 90%; text-align: center; }
-        .tutorial-details { background: #eef6fc; border-left: 4px solid #0077c8; padding: 15px 20px; margin-bottom: 25px; border-radius: 4px; font-size: 14px; }
-        .tutorial-details summary { font-weight: bold; cursor: pointer; color: #0077c8; outline: none; list-style-type: none; display: flex; align-items: center; font-size: 16px; }
+        .tutorial-details { background: #f6f8fe; border-left: 4px solid #324dc7; padding: 15px 20px; margin-bottom: 25px; border-radius: 4px; font-size: 14px; }
+        .tutorial-details summary { font-weight: bold; cursor: pointer; color: #324dc7; outline: none; list-style-type: none; display: flex; align-items: center; font-size: 16px; }
         .code-block { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto; font-family: monospace; font-size: 13px; margin: 15px 0; border: 1px solid #000; text-align: left; }
     </style>
 </head>
@@ -47,6 +47,9 @@
     <!-- TEACHER SETUP VIEW -->
     <div id="teacher-view" class="setup-container">
         <h1 style="color: #324dc7; margin-top: 0;">Bleubook: Teacher Setup</h1>
+        <div style="background: #f6f8fe; border-left: 4px solid #324dc7; padding: 12px 16px; border-radius: 4px; margin-bottom: 25px;">
+            <b>First time here?</b> Bleubook keeps your exams and student responses in your own Google Sheet, so there is a one-time database setup that takes a few minutes. <a href="#" onclick="openDbTutorial(); return false;" style="color: #324dc7; font-weight: bold;">Open the setup steps</a> and follow them before building your first exam. After that, this page remembers your setup in this browser, and you can go straight to your exams.
+        </div>
         
         <label><b>Exam Title:</b></label>
         <input type="text" id="exam-title" placeholder="e.g., APUSH Unit 4 DBQ">
@@ -89,24 +92,26 @@
             <p id="share-status" style="margin-bottom: 0; color:#555;"></p>
         </details>
 
-        <details class="tutorial-details">
-            <summary>How to set up the Google Sheets Database (Click to expand)</summary>
+        <details class="tutorial-details" id="db-tutorial">
+            <summary>How to set up the Google Sheets Database (One-time setup, click to expand)</summary>
             <div style="margin-top: 15px; line-height: 1.6;">
                 <ol style="padding-left: 20px; margin: 0;">
                     <li>Create a new Google Sheet and click <b>Extensions > Apps Script</b>.</li>
-                    <li>Delete any code there, and paste the Database code block below.</li>
+                    <li>Delete any code there, then paste the database code from the block below. Use the <b>Copy the Database Code</b> button under these steps so you get all of it in one click.</li>
                     <li>Click the <b>Save</b> icon.</li>
                     <li>Click <b>Deploy > New deployment</b> (Select type: <b>Web app</b>).</li>
                     <li>Set "Execute as" to <b>Me</b>, and "Who has access" to <b>Anyone</b>.</li>
-                    <li>Click Deploy, authorize the permissions, and <b>copy the Web App URL and paste it into the box above!</b></li>
+                    <li>Click <b>Deploy</b>. Google will ask you to review the permissions and allow them; this is your own script asking to work with your spreadsheet, so allow it. If you are signed in to more than one Google account, choose the one that owns the sheet.</li>
+                    <li><b>Copy the Web App URL and paste it into the box above.</b> The Web App URL starts with https://script.google.com/macros/s/ and ends with /exec. If the address you copied is your spreadsheet's address, that is the wrong one; the Web App URL is the one shown in the deployment window.</li>
                 </ol>
                 <p style="margin-bottom: 0;"><b>Keep your Web App URL.</b> The setup page remembers it in this browser, but the URL is your way back in from any other browser or computer: it is how you reach your saved exams and your students' responses. If you lose it, open your sheet, go to Extensions, Apps Script, then Deploy, Manage deployments, and copy it from there.</p>
                 <p style="margin-bottom: 0;">Your saved exams are listed at the bottom of this page whenever your Web App URL is filled in, each with its student link. "Use again" gives the same exam a fresh link and its own grading tab, tagged with the school year, so last year's exam can run again next year without mixing the two years' submissions.</p>
                 <p style="margin-bottom: 0;">Loading an exam back into setup: paste a student link or an Exam ID into the "Load an Exam Into Setup" box and the whole exam fills into the form, ready to edit and save as a new exam. Your saved exams below also have an "Edit in setup" button that does the same thing. If the exam has an access code, type it in that box's access code field. A setup code from another teacher pastes into the same box; the "Share This Exam as a Setup Code" button turns whatever is in your form into one of those codes.</p>
                 <p style="margin-bottom: 0;">Already deployed an older version? Paste this code over the old code, save, then use <b>Deploy > Manage deployments > Edit (pencil icon) > New Version > Deploy</b> so your Web App URL stays the same.</p>
                 <p style="margin-bottom: 0;">Grading: each exam tab is set up for anonymous grading. Students submit with their name and class period; the sheet shows a random Student ID and keeps names hidden in the last column. Each response gets a 0, 1, or 2 score selector beside it (green for points earned, red for zero, gray while ungraded), and the Total fills in on its own. When you are done, the <b>Bleubook</b> menu in the sheet can reveal the names sorted by period, and build a clean gradebook export tab with the class average.</p>
+                <button class="btn" id="copy-db-code-btn" style="margin: 5px 0 0;" onclick="copyDbCode()">Copy the Database Code</button>
                 <div class="code-block">
-<pre style="margin:0;">var DB_HEADERS = ["Exam ID", "Exam Title", "Exam Data"];
+<pre id="db-code" style="margin:0;">var DB_HEADERS = ["Exam ID", "Exam Title", "Exam Data"];
 var CHUNK_SIZE = 45000;
 
 function getDbSheet_(ss) {
@@ -384,7 +389,7 @@ function bleubookBuildExport() {
         <hr style="border: 1px solid #eee; margin: 30px 0;">
         
         <button class="btn btn-success" style="width: 100%; font-size: 18px; padding: 15px;" id="generate-btn" onclick="generateLink()">Save Exam & Generate Student Link</button>
-        <div id="link-output" style="margin-top:25px; word-break: break-all; font-weight:bold; color: #324dc7; background: #eef6fc; padding: 15px; border-radius: 5px; display: none;"></div>
+        <div id="link-output" style="margin-top:25px; word-break: break-all; font-weight:bold; color: #324dc7; background: #f6f8fe; padding: 15px; border-radius: 5px; display: none;"></div>
 
         <div id="library-section" class="hidden" style="margin-top: 35px;">
             <hr style="border: 1px solid #eee; margin: 30px 0;">
@@ -583,7 +588,7 @@ function bleubookBuildExport() {
                     const link = `${cleanBaseUrl}?id=${data.examId}&url=${encodeURIComponent(sheetUrl)}`;
                     const outputDiv = document.getElementById('link-output');
                     outputDiv.style.display = 'block';
-                    outputDiv.innerHTML = `Exam Saved! Share this short link with students:<br><br><a href="${link}" target="_blank" style="color:#0077c8;">${link}</a>`;
+                    outputDiv.innerHTML = `Exam Saved! Share this short link with students:<br><br><a href="${link}" target="_blank" style="color:#324dc7;">${link}</a>`;
                     loadLibrary(sheetUrl);
                 }
                 btn.innerText = "Save Exam & Generate Student Link";
@@ -594,6 +599,34 @@ function bleubookBuildExport() {
                 btn.innerText = "Save Exam & Generate Student Link";
                 btn.disabled = false;
             });
+        }
+
+        /* --- DIRECTIONS HELPERS --- */
+
+        function openDbTutorial() {
+            const tut = document.getElementById('db-tutorial');
+            tut.open = true;
+            tut.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        async function copyDbCode() {
+            const btn = document.getElementById('copy-db-code-btn');
+            const text = document.getElementById('db-code').innerText;
+            let ok = false;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                try { await navigator.clipboard.writeText(text); ok = true; } catch (e) { ok = false; }
+            }
+            if (ok) {
+                btn.innerText = "Copied!";
+            } else {
+                const range = document.createRange();
+                range.selectNodeContents(document.getElementById('db-code'));
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+                btn.innerText = "Selected. Press Ctrl+C to copy";
+            }
+            setTimeout(() => { btn.innerText = "Copy the Database Code"; }, 3000);
         }
 
         /* --- LOAD INTO SETUP + SETUP CODES --- */
@@ -836,7 +869,7 @@ function bleubookBuildExport() {
                 .then(saved => {
                     if (saved.examId) {
                         const link = studentLinkFor(saved.examId, sheetUrl);
-                        showLinkMessage(`Fresh copy saved as "${examData.title}". Share this new link with students:<br><br><a href="${link}" target="_blank" style="color:#0077c8;">${link}</a>`);
+                        showLinkMessage(`Fresh copy saved as "${examData.title}". Share this new link with students:<br><br><a href="${link}" target="_blank" style="color:#324dc7;">${link}</a>`);
                         status.innerText = "";
                         loadLibrary(sheetUrl);
                     } else {
