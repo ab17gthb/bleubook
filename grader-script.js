@@ -18,13 +18,38 @@ function doPost(e) {
     var records = dbSheet.getDataRange().getValues();
     for (var i = 1; i < records.length; i++) {
       if (records[i][0] === data.examId) {
-        return ContentService.createTextOutput(records[i][1]).setMimeType(ContentService.MimeType.JSON);
+        var exam = JSON.parse(records[i][1]);
+        if (exam.accessCode) {
+          if (!data.code) {
+            return ContentService.createTextOutput(JSON.stringify({"error": "code_required"})).setMimeType(ContentService.MimeType.JSON);
+          }
+          if (String(data.code).trim().toLowerCase() !== String(exam.accessCode).trim().toLowerCase()) {
+            return ContentService.createTextOutput(JSON.stringify({"error": "wrong_code"})).setMimeType(ContentService.MimeType.JSON);
+          }
+        }
+        delete exam.accessCode;
+        return ContentService.createTextOutput(JSON.stringify(exam)).setMimeType(ContentService.MimeType.JSON);
       }
     }
     return ContentService.createTextOutput(JSON.stringify({"error": "Exam not found"})).setMimeType(ContentService.MimeType.JSON);
   }
 
   if (data.action === "submitAnswers") {
+    if (data.examId) {
+      var lookupSheet = ss.getSheetByName("Exam_Database");
+      if (lookupSheet) {
+        var rows = lookupSheet.getDataRange().getValues();
+        for (var i = 1; i < rows.length; i++) {
+          if (rows[i][0] === data.examId) {
+            var storedExam = JSON.parse(rows[i][1]);
+            if (storedExam.accessCode && String(data.code || "").trim().toLowerCase() !== String(storedExam.accessCode).trim().toLowerCase()) {
+              return ContentService.createTextOutput(JSON.stringify({"error": "wrong_code"})).setMimeType(ContentService.MimeType.JSON);
+            }
+            break;
+          }
+        }
+      }
+    }
     var examTitle = data.examTitle || "Untitled Exam";
     var sheet = ss.getSheetByName(examTitle);
     var n = data.responses.length;

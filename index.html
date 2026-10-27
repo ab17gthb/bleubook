@@ -53,6 +53,10 @@
         
         <label><b>Google Apps Script Web App URL:</b></label>
         <input type="url" id="sheet-url" placeholder="Paste your Web App URL here...">
+        <p style="margin-top: -12px; font-size: 0.9em; color: #555;">Keep this URL saved somewhere. It is how you reach your saved exams and student responses from any browser or computer.</p>
+        
+        <label><b>Access Code (optional):</b></label>
+        <input type="text" id="exam-code" placeholder="e.g., hawks27 — students must enter this code to open the exam. Leave blank for no code.">
         
         <div style="display: flex; gap: 20px;">
             <div style="flex: 1;">
@@ -79,6 +83,7 @@
                     <li>Set "Execute as" to <b>Me</b>, and "Who has access" to <b>Anyone</b>.</li>
                     <li>Click Deploy, authorize the permissions, and <b>copy the Web App URL and paste it into the box above!</b></li>
                 </ol>
+                <p style="margin-bottom: 0;"><b>Keep your Web App URL.</b> The setup page remembers it in this browser, but the URL is your way back in from any other browser or computer: it is how you reach your saved exams and your students' responses. If you lose it, open your sheet, go to Extensions, Apps Script, then Deploy, Manage deployments, and copy it from there.</p>
                 <p style="margin-bottom: 0;">Already deployed an older version? Paste this code over the old code, save, then use <b>Deploy > Manage deployments > Edit (pencil icon) > New Version > Deploy</b> so your Web App URL stays the same.</p>
                 <p style="margin-bottom: 0;">Grading: each exam tab is set up for anonymous grading. Students submit with their name and class period; the sheet shows a random Student ID and keeps names hidden in the last column. Each response gets a 0, 1, or 2 score selector beside it (green for points earned, red for zero, gray while ungraded), and the Total fills in on its own. When you are done, the <b>Bleubook</b> menu in the sheet can reveal the names sorted by period, and build a clean gradebook export tab with the class average.</p>
                 <div class="code-block">
@@ -102,13 +107,38 @@
     var records = dbSheet.getDataRange().getValues();
     for (var i = 1; i &lt; records.length; i++) {
       if (records[i][0] === data.examId) {
-        return ContentService.createTextOutput(records[i][1]).setMimeType(ContentService.MimeType.JSON);
+        var exam = JSON.parse(records[i][1]);
+        if (exam.accessCode) {
+          if (!data.code) {
+            return ContentService.createTextOutput(JSON.stringify({"error": "code_required"})).setMimeType(ContentService.MimeType.JSON);
+          }
+          if (String(data.code).trim().toLowerCase() !== String(exam.accessCode).trim().toLowerCase()) {
+            return ContentService.createTextOutput(JSON.stringify({"error": "wrong_code"})).setMimeType(ContentService.MimeType.JSON);
+          }
+        }
+        delete exam.accessCode;
+        return ContentService.createTextOutput(JSON.stringify(exam)).setMimeType(ContentService.MimeType.JSON);
       }
     }
     return ContentService.createTextOutput(JSON.stringify({"error": "Exam not found"})).setMimeType(ContentService.MimeType.JSON);
   }
 
   if (data.action === "submitAnswers") {
+    if (data.examId) {
+      var lookupSheet = ss.getSheetByName("Exam_Database");
+      if (lookupSheet) {
+        var rows = lookupSheet.getDataRange().getValues();
+        for (var i = 1; i &lt; rows.length; i++) {
+          if (rows[i][0] === data.examId) {
+            var storedExam = JSON.parse(rows[i][1]);
+            if (storedExam.accessCode &amp;&amp; String(data.code || "").trim().toLowerCase() !== String(storedExam.accessCode).trim().toLowerCase()) {
+              return ContentService.createTextOutput(JSON.stringify({"error": "wrong_code"})).setMimeType(ContentService.MimeType.JSON);
+            }
+            break;
+          }
+        }
+      }
+    }
     var examTitle = data.examTitle || "Untitled Exam";
     var sheet = ss.getSheetByName(examTitle);
     var n = data.responses.length;
@@ -306,6 +336,13 @@ function bleubookBuildExport() {
             <!-- Right Pane scrolls all prompts and editors -->
             <div class="right-pane" id="student-parts-container"></div>
         </div>
+        <div id="code-gate" class="setup-container hidden" style="margin-top: 40px;">
+            <h2 style="color: #00205b; margin-top: 0;">Enter Access Code</h2>
+            <p>Your teacher will give you a code to open this exam.</p>
+            <input type="text" id="code-input" placeholder="Access code">
+            <button class="btn btn-success" style="width: 100%;" onclick="submitCode()">Open Exam</button>
+            <p id="code-status" style="margin-top: 15px; font-weight: bold; color: #dc3545;"></p>
+        </div>
         <div class="footer">
             <button class="btn btn-success" id="finish-btn" style="padding: 12px 40px; font-size: 1.1em;" onclick="showSubmission()">Finish Exam</button>
         </div>
@@ -332,6 +369,7 @@ function bleubookBuildExport() {
         let studentAnswers = [];         
         let globalSheetUrl = ""; 
         let examInProgress = false; 
+        let enteredCode = "";
         
         // Timer Variables
         let timerInterval;
@@ -348,7 +386,8 @@ function bleubookBuildExport() {
                 examIdGlobal = examId;
                 document.getElementById('teacher-view').classList.add('hidden');
                 document.getElementById('student-view').classList.remove('hidden');
-                fetchStudentExam(examId, globalSheetUrl);
+                const remembered = sessionStorage.getItem(`bleubook_code_${examId}`);
+                fetchStudentExam(examId, globalSheetUrl, remembered || undefined);
             } else {
                 const savedUrl = localStorage.getItem('bleubook_teacher_url');
                 if (savedUrl) { document.getElementById('sheet-url').value = savedUrl; }
@@ -448,6 +487,7 @@ function bleubookBuildExport() {
                     title: title, 
                     timerType: tType,
                     timeLimit: parseInt(tLimit) || 0,
+                    accessCode: document.getElementById('exam-code').value.trim(),
                     questions: questionsData 
                 }
             };
@@ -474,11 +514,32 @@ function bleubookBuildExport() {
 
         /* --- STUDENT FUNCTIONS --- */
         
-        function fetchStudentExam(examId, sheetUrl) {
-            fetch(sheetUrl, { method: 'POST', body: JSON.stringify({ action: "getExam", examId: examId }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }})
+        function submitCode() {
+            const code = document.getElementById('code-input').value.trim();
+            if (!code) { document.getElementById('code-status').innerText = "Type the code from your teacher first."; return; }
+            document.getElementById('code-status').innerText = "";
+            fetchStudentExam(examIdGlobal, globalSheetUrl, code);
+        }
+
+        function fetchStudentExam(examId, sheetUrl, code) {
+            const body = { action: "getExam", examId: examId };
+            if (code) { body.code = code; }
+            fetch(sheetUrl, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'text/plain;charset=utf-8' }})
             .then(res => res.json())
             .then(data => {
+                if (data.error === "code_required" || data.error === "wrong_code") {
+                    document.getElementById('student-exam-title').innerText = "Locked Exam";
+                    document.getElementById('code-gate').classList.remove('hidden');
+                    if (data.error === "wrong_code") {
+                        sessionStorage.removeItem(`bleubook_code_${examId}`);
+                        document.getElementById('code-status').innerText = "That code is not right. Check with your teacher and try again.";
+                    }
+                    return;
+                }
                 if(data.error) { document.getElementById('student-exam-title').innerText = "Exam Not Found"; return; }
+                enteredCode = code || "";
+                if (code) { sessionStorage.setItem(`bleubook_code_${examId}`, code); }
+                document.getElementById('code-gate').classList.add('hidden');
                 examData = data;
                 document.getElementById('student-exam-title').innerText = examData.title;
                 document.getElementById('exam-container').style.display = 'flex';
@@ -672,6 +733,8 @@ function bleubookBuildExport() {
                 action: "submitAnswers",
                 studentName: name,
                 period: period,
+                examId: examIdGlobal,
+                code: enteredCode,
                 examTitle: examData.title,
                 timerAtSubmission: finalTimerValue,
                 prompts: flatPrompts,
