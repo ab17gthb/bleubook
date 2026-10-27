@@ -80,11 +80,12 @@
                     <li>Click Deploy, authorize the permissions, and <b>copy the Web App URL and paste it into the box above!</b></li>
                 </ol>
                 <p style="margin-bottom: 0;">Already deployed an older version? Paste this code over the old code, save, then use <b>Deploy > Manage deployments > Edit (pencil icon) > New Version > Deploy</b> so your Web App URL stays the same.</p>
+                <p style="margin-bottom: 0;">Grading: each exam tab is set up for anonymous grading. Students submit with their name and class period; the sheet shows a random Student ID and keeps names hidden in the last column. Each response gets a 0, 1, or 2 score selector beside it (green for points earned, red for zero, gray while ungraded), and the Total fills in on its own. When you are done, the <b>Bleubook</b> menu in the sheet can reveal the names sorted by period, and build a clean gradebook export tab with the class average.</p>
                 <div class="code-block">
 <pre style="margin:0;">function doPost(e) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var data = JSON.parse(e.postData.contents);
-  
+
   if (data.action === "saveExam") {
     var dbSheet = ss.getSheetByName("Exam_Database");
     if (!dbSheet) {
@@ -95,7 +96,7 @@
     dbSheet.appendRow([examId, JSON.stringify(data.examData)]);
     return ContentService.createTextOutput(JSON.stringify({"status": "success", "examId": examId})).setMimeType(ContentService.MimeType.JSON);
   }
-  
+
   if (data.action === "getExam") {
     var dbSheet = ss.getSheetByName("Exam_Database");
     var records = dbSheet.getDataRange().getValues();
@@ -106,34 +107,176 @@
     }
     return ContentService.createTextOutput(JSON.stringify({"error": "Exam not found"})).setMimeType(ContentService.MimeType.JSON);
   }
-  
+
   if (data.action === "submitAnswers") {
     var examTitle = data.examTitle || "Untitled Exam";
     var sheet = ss.getSheetByName(examTitle);
-    
+    var n = data.responses.length;
+    var totalCol = 5 + 2 * n;
+    var feedbackCol = totalCol + 1;
+    var nameCol = feedbackCol + 1;
+
     if (!sheet) {
       sheet = ss.insertSheet(examTitle);
-      // Added "Timer at Submission" to the headers
-      var headers = ["Timestamp", "Timer at Submission", "Student Name", "Exam Title"];
-      for (var i = 0; i &lt; data.responses.length; i++) {
+      var headers = ["Timestamp", "Timer at Submission", "Period", "Student ID"];
+      for (var i = 0; i &lt; n; i++) {
         headers.push(data.prompts &amp;&amp; data.prompts[i] ? data.prompts[i] : "Response " + (i + 1));
+        headers.push("Score: Part " + (i + 1));
       }
-      headers.push("Score", "Teacher Feedback");
+      headers.push("Total", "Teacher Feedback", "Student Name");
       sheet.appendRow(headers);
       sheet.setFrozenRows(1);
+      sheet.setFrozenColumns(4);
       sheet.getRange("1:1").setFontWeight("bold");
-      // Keep the Timer at Submission column as plain text so Sheets does not convert a value like 00:38 into a time of day
       sheet.getRange("B:B").setNumberFormat("@");
+
+      var rules = [];
+      for (var i = 0; i &lt; n; i++) {
+        var respCol = 5 + 2 * i;
+        var scoreCol = respCol + 1;
+        var colLetter = columnLetter_(scoreCol);
+        sheet.setColumnWidth(respCol, 380);
+        sheet.getRange(1, respCol, 1000, 1).setWrap(true);
+        sheet.setColumnWidth(scoreCol, 75);
+        var scoreRange = sheet.getRange(2, scoreCol, 998, 1);
+        var dv = SpreadsheetApp.newDataValidation().requireValueInList([0, 1, 2], true).setAllowInvalid(false).build();
+        scoreRange.setDataValidation(dv);
+        rules.push(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied("=" + colLetter + "2=\"\"").setBackground("#e0e0e0").setRanges([scoreRange]).build());
+        rules.push(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied("=AND(" + colLetter + "2&lt;>\"\",VALUE(" + colLetter + "2)=0)").setBackground("#f4cccc").setRanges([scoreRange]).build());
+        rules.push(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied("=AND(" + colLetter + "2&lt;>\"\",VALUE(" + colLetter + "2)>0)").setBackground("#d9ead3").setRanges([scoreRange]).build());
+      }
+      var periodRange = sheet.getRange(2, 3, 998, 1);
+      rules.push(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied("=AND(C2&lt;>\"\",NOT(ISNUMBER(C2)))").setBackground("#f4cccc").setRanges([periodRange]).build());
+      sheet.setConditionalFormatRules(rules);
+
+      var phrases = ["Strong evidence use", "Needs a citation", "Explain the significance", "Check the sourcing", "Good analysis", "Develop this further", "See me about this"];
+      var fbRange = sheet.getRange(2, feedbackCol, 998, 1);
+      var fbDv = SpreadsheetApp.newDataValidation().requireValueInList(phrases, true).setAllowInvalid(true).build();
+      fbRange.setDataValidation(fbDv);
+      sheet.setColumnWidth(feedbackCol, 220);
+      sheet.hideColumns(nameCol);
     }
-    
-    // Pushing the timer data into the new row
-    var row = [new Date(), data.timerAtSubmission, data.studentName, data.examTitle];
-    for (var i = 0; i &lt; data.responses.length; i++) { row.push(data.responses[i]); }
+
+    var studentId = makeStudentId_(sheet);
+    var row = [new Date(), data.timerAtSubmission, data.period, studentId];
+    for (var i = 0; i &lt; n; i++) { row.push(data.responses[i]); row.push(""); }
+    row.push("", "", data.studentName);
     sheet.appendRow(row);
-    
+    var lastRow = sheet.getLastRow();
+
+    var timerCell = sheet.getRange(lastRow, 2);
+    timerCell.setNumberFormat("@");
+    timerCell.setValue(String(data.timerAtSubmission || ""));
+
+    var cells = [];
+    var exprs = [];
+    for (var i = 0; i &lt; n; i++) {
+      var ref = columnLetter_(6 + 2 * i) + lastRow;
+      cells.push(ref);
+      exprs.push("IF(" + ref + "=\"\",0,VALUE(" + ref + "))");
+    }
+    var totalFormula = "=IF(COUNTA(" + cells.join(",") + ")=0," + "\"\"" + "," + exprs.join("+") + ")";
+    sheet.getRange(lastRow, totalCol).setFormula(totalFormula);
+
     return ContentService.createTextOutput(JSON.stringify({"status": "success"})).setMimeType(ContentService.MimeType.JSON);
   }
-}</pre>
+}
+
+function columnLetter_(col) {
+  var letter = "";
+  while (col > 0) {
+    var rem = (col - 1) % 26;
+    letter = String.fromCharCode(65 + rem) + letter;
+    col = Math.floor((col - 1) / 26);
+  }
+  return letter;
+}
+
+function makeStudentId_(sheet) {
+  var lastRow = sheet.getLastRow();
+  var existing = {};
+  if (lastRow > 1) {
+    var vals = sheet.getRange(2, 4, lastRow - 1, 1).getValues();
+    for (var i = 0; i &lt; vals.length; i++) { existing[String(vals[i][0])] = true; }
+  }
+  var id;
+  do { id = "S-" + Math.floor(1000 + Math.random() * 9000); } while (existing[id]);
+  return id;
+}
+
+function onOpen() {
+  SpreadsheetApp.getUi().createMenu("Bleubook")
+    .addItem("Reveal student names", "bleubookRevealNames")
+    .addItem("Hide student names", "bleubookHideNames")
+    .addItem("Build gradebook export", "bleubookBuildExport")
+    .addToUi();
+}
+
+function bleubookFindCols_(sheet) {
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var map = {};
+  for (var i = 0; i &lt; headers.length; i++) { map[String(headers[i])] = i + 1; }
+  return map;
+}
+
+function bleubookRevealNames() {
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var cols = bleubookFindCols_(sheet);
+  if (!cols["Student Name"] || !cols["Period"]) { SpreadsheetApp.getUi().alert("This is not a Bleubook exam tab."); return; }
+  sheet.showColumns(cols["Student Name"]);
+  var lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).sort([{column: cols["Period"], ascending: true}, {column: cols["Student Name"], ascending: true}]);
+  }
+}
+
+function bleubookHideNames() {
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var cols = bleubookFindCols_(sheet);
+  if (!cols["Student Name"]) { SpreadsheetApp.getUi().alert("This is not a Bleubook exam tab."); return; }
+  sheet.hideColumns(cols["Student Name"]);
+}
+
+function bleubookBuildExport() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var cols = bleubookFindCols_(sheet);
+  if (!cols["Student Name"] || !cols["Total"]) { SpreadsheetApp.getUi().alert("This is not a Bleubook exam tab."); return; }
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  var data = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, lastCol).getValues() : [];
+  var rows = [];
+  for (var i = 0; i &lt; data.length; i++) {
+    rows.push([data[i][cols["Period"] - 1], data[i][cols["Student Name"] - 1], data[i][cols["Total"] - 1], data[i][cols["Teacher Feedback"] - 1]]);
+  }
+  rows.sort(function(a, b) {
+    if (a[0] !== b[0]) { return (a[0] &lt; b[0]) ? -1 : 1; }
+    return String(a[1]).localeCompare(String(b[1]));
+  });
+  var name = sheet.getName() + " Export";
+  var out = ss.getSheetByName(name);
+  if (out) { ss.deleteSheet(out); }
+  out = ss.insertSheet(name);
+  out.appendRow(["Period", "Student Name", "Total", "Teacher Feedback"]);
+  out.getRange("1:1").setFontWeight("bold");
+  out.setFrozenRows(1);
+  for (var i = 0; i &lt; rows.length; i++) { out.appendRow(rows[i]); }
+  var lastDataRow = rows.length + 1;
+  out.getRange("F1").setValue("Class summary");
+  out.getRange("F1").setFontWeight("bold");
+  out.getRange("F2").setValue("Average total");
+  out.getRange("F3").setValue("Highest total");
+  out.getRange("F4").setValue("Lowest total");
+  out.getRange("F5").setValue("Scores entered");
+  if (rows.length > 0) {
+    out.getRange("G2").setFormula("=AVERAGE(C2:C" + lastDataRow + ")");
+    out.getRange("G3").setFormula("=MAX(C2:C" + lastDataRow + ")");
+    out.getRange("G4").setFormula("=MIN(C2:C" + lastDataRow + ")");
+    out.getRange("G5").setFormula("=COUNT(C2:C" + lastDataRow + ")");
+  }
+  SpreadsheetApp.getUi().alert("Gradebook export built on the tab: " + name);
+}
+</pre>
                 </div>
             </div>
         </details>
@@ -172,8 +315,9 @@
     <div id="submit-modal" class="student-modal hidden">
         <div class="modal-content">
             <h2 style="color: #00205b; margin-top:0;">Exam Complete</h2>
-            <p>Enter your full name to submit your responses.</p>
+            <p>Enter your full name and class period to submit your responses.</p>
             <input type="text" id="student-name" placeholder="First and Last Name" style="width: 100%;">
+            <input type="number" id="student-period" placeholder="Class Period (number)" min="1" style="width: 100%;">
             <button class="btn btn-success" id="submit-final-btn" onclick="submitToSheets()" style="width: 100%;">Submit to Teacher</button>
             <p id="submit-status" style="margin-top: 20px; font-weight: bold; font-size: 1.1em;"></p>
         </div>
@@ -468,16 +612,33 @@
         }
 
         function showSubmission() {
+            let blanks = [];
+            for (let q = 0; q < examData.questions.length; q++) {
+                for (let p = 0; p < examData.questions[q].prompts.length; p++) {
+                    let txt = (studentAnswers[q][p] || "").replace(/<[^>]*>?/gm, ' ').trim();
+                    if (!txt) { blanks.push(examData.questions.length > 1 ? `Question ${q + 1}, Part ${p + 1}` : `Part ${p + 1}`); }
+                }
+            }
+            if (blanks.length > 0) {
+                if (!confirm(`These parts are blank: ${blanks.join(', ')}. Submit anyway?`)) { return; }
+            }
             document.getElementById('submit-modal').classList.remove('hidden');
             clearInterval(timerInterval);
         }
 
         function submitToSheets() {
             const name = document.getElementById('student-name').value;
+            const period = document.getElementById('student-period').value;
             const statusLabel = document.getElementById('submit-status');
             
             if (!name.trim()) {
                 statusLabel.innerText = "Please enter your name!";
+                statusLabel.style.color = "#dc3545";
+                return;
+            }
+
+            if (!period || isNaN(Number(period))) {
+                statusLabel.innerText = "Please enter your class period as a number!";
                 statusLabel.style.color = "#dc3545";
                 return;
             }
@@ -510,6 +671,7 @@
             const payload = {
                 action: "submitAnswers",
                 studentName: name,
+                period: period,
                 examTitle: examData.title,
                 timerAtSubmission: finalTimerValue,
                 prompts: flatPrompts,

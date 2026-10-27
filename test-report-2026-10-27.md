@@ -35,3 +35,7 @@ https://script.google.com/macros/s/AKfycbxmmKbYwHgYaVMsDClzRYjNn6RhnR8c3cPcs9kFn
 - Grader script updated to the Timer version and deployed as Version 4 (URL unchanged). A fresh exam, "Timer Column Test" (EXAM-142149611), created a tab with headers: Timestamp | Timer at Submission | Student Name | Exam Title | Part A: Why did it matter? | Score | Teacher Feedback.
 - Test Student submitted after 38 seconds on the count-up stopwatch; the Timer at Submission cell recorded 0:38, matching the on-screen timer. Quirk: Sheets parses "00:38" as a time of day (formula bar shows 12:38:00 AM) though the cell displays 0:38.
 - Site is now at v5 (timer-limit input toggle fix); the setup tutorial embeds the current script for copy-paste.
+
+## Plain-text timer, attempt 1 (script Version 5) — FAILED verification 2026-10-27 09:25 ET
+- Added sheet.getRange("B:B").setNumberFormat("@") at tab creation and redeployed as Version 5 (URL unchanged). Fresh exam "Plain Text Timer Test" (EXAM-934194219): B2 grid showed 0:32 but the formula bar still showed 12:32:00 AM. appendRow re-parses the value as a time regardless of the preset column format.
+- Attempt 2 (in progress): after appendRow, overwrite the timer cell explicitly with setNumberFormat("@") + setValue(String(...)), redeploy, and re-verify with a fresh tab.
