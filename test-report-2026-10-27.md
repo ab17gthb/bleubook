@@ -21,3 +21,12 @@ Student flow
 13. PASS — Blank name gave "Please enter your name!"; submitting as "Test Student" with no grading URL gave "Teacher did not provide a grading link. Please copy/paste your answers manually." (expected behavior).
 
 Other: timer stopped when the completion modal opened (by design). Testing only; nothing deployed or changed.
+
+## Database version (v2/v3) test — 2026-10-27, later
+
+Working grader Web App URL (Oakwood copy sheet, unchanged across the v2 redeploy):
+https://script.google.com/macros/s/AKfycbxmmKbYwHgYaVMsDClzRYjNn6RhnR8c3cPcs9kFnzr8AMDiVk9gBvEnsmexL_ZcjiwUnA/exec
+
+- Script in "Bleubook Grader Test (Oakwood copy)" replaced with the Database version (saveExam/getExam/submitAnswers) and redeployed as Version 2 via Manage deployments > Edit > New version. URL unchanged.
+- Live test on bleubook.web.app: "Database Test Exam" saved from the teacher view; Exam_Database tab row EXAM-35104506 created; short student link loaded the exam from the database; submission as Test Student showed "Success! Your exam has been securely submitted."; the "Database Test Exam" tab holds the row with the answer under "Q1: Part A: Summarize the document."
+- All steps passed.

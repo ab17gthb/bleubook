@@ -10,22 +10,31 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f5f7; }
         .header { background-color: #00205b; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 1.2em; font-weight: bold; }
         .container { display: flex; height: calc(100vh - 125px); }
-        .left-pane, .right-pane { width: 50%; padding: 25px; overflow-y: auto; background: white; border-right: 2px solid #ddd; box-sizing: border-box; }
-        .right-pane { border-right: none; display: flex; flex-direction: column; }
-        .footer { background: #eee; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #ddd; height: 65px; box-sizing: border-box; }
+        .left-pane, .right-pane { width: 50%; padding: 30px; overflow-y: auto; background: white; border-right: 2px solid #ddd; box-sizing: border-box; }
+        .right-pane { border-right: none; display: flex; flex-direction: column; background: #fafafa; }
+        .footer { background: #eee; padding: 15px 25px; display: flex; justify-content: center; align-items: center; border-top: 2px solid #ddd; height: 65px; box-sizing: border-box; }
         .btn { background: #0077c8; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background 0.2s; margin-right: 10px; }
         .btn:hover { background: #005a9c; }
         .btn-secondary { background: #6c757d; font-size: 14px; padding: 8px 15px; margin-top: 10px; }
         .btn-success { background: #28a745; }
+        .btn-success:hover { background: #218838; }
+        .btn-outline { background: transparent; border: 1px solid white; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.8em; margin-left: 15px; cursor: pointer; }
+        .btn-outline:hover { background: rgba(255,255,255,0.2); }
+        
         .setup-container { max-width: 900px; margin: 40px auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        input[type="text"], input[type="url"] { width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
+        input[type="text"], input[type="url"], input[type="number"], select { width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
         .hidden { display: none !important; }
-        .editor-container { height: 180px; margin-bottom: 50px; background: white; } 
+        .editor-container { height: 150px; margin-bottom: 40px; background: white; } 
+        
         .question-block { border: 2px solid #e0e0e0; padding: 25px; margin-bottom: 30px; border-radius: 8px; background: #fdfdfd; }
         .part-block { border: 1px dashed #bbb; padding: 20px; margin-top: 20px; border-radius: 5px; background: white; }
-        .student-part-container { margin-bottom: 30px; display: flex; flex-direction: column; }
-        .student-prompt { font-weight: bold; margin-bottom: 10px; font-size: 1.1em; color: #333; }
-        .student-answer-editor { min-height: 250px; margin-bottom: 50px; background: white; }
+        
+        .student-stimulus-block { margin-bottom: 50px; border-bottom: 2px solid #eee; padding-bottom: 30px; }
+        .student-part-container { margin-bottom: 45px; display: flex; flex-direction: column; }
+        .student-prompt { font-weight: bold; margin-bottom: 15px; font-size: 1.15em; color: #111; line-height: 1.5; }
+        .student-answer-editor { min-height: 120px; background: white; border-radius: 4px; }
+        .word-count { text-align: right; font-size: 0.85em; color: #666; margin-top: 5px; font-style: italic; }
+        
         .student-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: white; padding: 40px; border-radius: 8px; max-width: 500px; width: 90%; text-align: center; }
         .tutorial-details { background: #eef6fc; border-left: 4px solid #0077c8; padding: 15px 20px; margin-bottom: 25px; border-radius: 4px; font-size: 14px; }
@@ -42,79 +51,34 @@
         <label><b>Exam Title:</b></label>
         <input type="text" id="exam-title" placeholder="e.g., APUSH Unit 4 DBQ">
         
-        <label><b>Google Apps Script Web App URL (REQUIRED for saving images/exams and auto-submission):</b></label>
+        <label><b>Google Apps Script Web App URL:</b></label>
         <input type="url" id="sheet-url" placeholder="Paste your Web App URL here...">
+        
+        <div style="display: flex; gap: 20px;">
+            <div style="flex: 1;">
+                <label><b>Timer Mode:</b></label>
+                <select id="timer-type" onchange="toggleTimerInput()">
+                    <option value="up">Count Up (Stopwatch)</option>
+                    <option value="down">Count Down (Auto-Locking)</option>
+                </select>
+            </div>
+            <div style="flex: 1;" id="time-limit-container" class="hidden">
+                <label><b>Time Limit (Minutes):</b></label>
+                <input type="number" id="time-limit" placeholder="e.g. 45" value="45">
+            </div>
+        </div>
         
         <details class="tutorial-details">
             <summary>How to set up the Google Sheets Database (Click to expand)</summary>
             <div style="margin-top: 15px; line-height: 1.6;">
-                <p>Because exams with images are too large for standard links, this app saves your exams directly to a hidden tab in your Google Sheet, and uses other tabs to collect student answers.</p>
                 <ol style="padding-left: 20px; margin: 0;">
                     <li>Create a new Google Sheet and click <b>Extensions > Apps Script</b>.</li>
-                    <li>Delete any code there, and paste the Database code block below.</li>
+                    <li>Delete any code there, and paste the Database code block.</li>
                     <li>Click the <b>Save</b> icon.</li>
                     <li>Click <b>Deploy > New deployment</b> (Select type: <b>Web app</b>).</li>
                     <li>Set "Execute as" to <b>Me</b>, and "Who has access" to <b>Anyone</b>.</li>
                     <li>Click Deploy, authorize the permissions, and <b>copy the Web App URL and paste it into the box above!</b></li>
                 </ol>
-                <div class="code-block">
-<pre style="margin:0;">function doPost(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var data = JSON.parse(e.postData.contents);
-  
-  if (data.action === "saveExam") {
-    var dbSheet = ss.getSheetByName("Exam_Database");
-    if (!dbSheet) {
-      dbSheet = ss.insertSheet("Exam_Database");
-      dbSheet.appendRow(["Exam ID", "Exam Data"]);
-    }
-    var examId = "EXAM-" + Math.floor(Math.random() * 1000000000);
-    dbSheet.appendRow([examId, JSON.stringify(data.examData)]);
-    return ContentService.createTextOutput(JSON.stringify({"status": "success", "examId": examId}))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-  
-  if (data.action === "getExam") {
-    var dbSheet = ss.getSheetByName("Exam_Database");
-    var records = dbSheet.getDataRange().getValues();
-    for (var i = 1; i < records.length; i++) {
-      if (records[i][0] === data.examId) {
-        return ContentService.createTextOutput(records[i][1]).setMimeType(ContentService.MimeType.JSON);
-      }
-    }
-    return ContentService.createTextOutput(JSON.stringify({"error": "Exam not found"})).setMimeType(ContentService.MimeType.JSON);
-  }
-  
-  if (data.action === "submitAnswers") {
-    var examTitle = data.examTitle || "Untitled Exam";
-    var sheet = ss.getSheetByName(examTitle);
-    
-    if (!sheet) {
-      sheet = ss.insertSheet(examTitle);
-      var headers = ["Timestamp", "Student Name", "Exam Title"];
-      for (var i = 0; i < data.responses.length; i++) {
-        if (data.prompts && data.prompts[i]) {
-          headers.push(data.prompts[i]); 
-        } else {
-          headers.push("Response " + (i + 1));
-        }
-      }
-      sheet.appendRow(headers);
-      sheet.setFrozenRows(1);
-      sheet.getRange("1:1").setFontWeight("bold");
-    }
-    
-    var row = [new Date(), data.studentName, data.examTitle];
-    for (var i = 0; i < data.responses.length; i++) {
-      row.push(data.responses[i]);
-    }
-    sheet.appendRow(row);
-    
-    return ContentService.createTextOutput(JSON.stringify({"status": "success"}))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}</pre>
-                </div>
             </div>
         </details>
 
@@ -132,17 +96,19 @@
     <div id="student-view" class="hidden">
         <div class="header">
             <div id="student-exam-title">Loading Exam...</div>
-            <div style="font-family: monospace; font-size: 1.2em;">Timer: <span id="timer">00:00</span></div>
+            <div style="font-family: monospace; font-size: 1.2em; display:flex; align-items:center;">
+                Timer: <span id="timer" style="margin-left: 10px; width: 60px; display:inline-block;">00:00</span>
+                <button class="btn-outline" id="toggle-timer-btn" onclick="toggleTimer()">Hide</button>
+            </div>
         </div>
         <div class="container" id="exam-container" style="display:none;">
+            <!-- Left Pane scrolls all stimuli -->
             <div class="left-pane" id="student-stimulus"></div>
+            <!-- Right Pane scrolls all prompts and editors -->
             <div class="right-pane" id="student-parts-container"></div>
         </div>
         <div class="footer">
-            <button class="btn" id="prev-btn" onclick="prevQuestion()">Previous</button>
-            <span id="question-tracker" style="font-weight: bold; color: #555;">Loading...</span>
-            <button class="btn" id="next-btn" onclick="nextQuestion()">Next</button>
-            <button class="btn btn-success hidden" id="finish-btn" onclick="showSubmission()">Finish Exam</button>
+            <button class="btn btn-success" id="finish-btn" style="padding: 12px 40px; font-size: 1.1em;" onclick="showSubmission()">Finish Exam</button>
         </div>
     </div>
 
@@ -159,14 +125,19 @@
 
     <script>
         let examData = null;
-        let currentQuestionIndex = 0;
+        let examIdGlobal = null;
         let teacherStimulusEditors = []; 
         let teacherPromptEditors = [];   
         let studentEditors = [];         
         let studentAnswers = [];         
-        let timerInterval;
-        let secondsElapsed = 0;
         let globalSheetUrl = ""; 
+        let examInProgress = false; 
+        
+        // Timer Variables
+        let timerInterval;
+        let timeRemainingOrElapsed = 0;
+        let isCountDown = false;
+        let timerVisible = true;
 
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -174,13 +145,30 @@
             globalSheetUrl = urlParams.get('url'); 
             
             if (examId && globalSheetUrl) {
+                examIdGlobal = examId;
                 document.getElementById('teacher-view').classList.add('hidden');
                 document.getElementById('student-view').classList.remove('hidden');
                 fetchStudentExam(examId, globalSheetUrl);
             } else {
+                const savedUrl = localStorage.getItem('bleubook_teacher_url');
+                if (savedUrl) { document.getElementById('sheet-url').value = savedUrl; }
                 addQuestion(); 
             }
         };
+
+        window.addEventListener('beforeunload', function (e) {
+            if (examInProgress) {
+                e.preventDefault();
+                e.returnValue = ''; 
+            }
+        });
+
+        /* --- TEACHER FUNCTIONS --- */
+        
+        function toggleTimerInput() {
+            const type = document.getElementById('timer-type').value;
+            document.getElementById('time-limit-container').style.display = type === 'down' ? 'block' : 'none';
+        }
 
         function addQuestion() {
             const qIndex = teacherStimulusEditors.length;
@@ -190,7 +178,7 @@
             qBlock.className = 'question-block';
             qBlock.id = `q-block-${qIndex}`;
             qBlock.innerHTML = `
-                <h3 style="margin-top:0; color:#00205b;">Question ${qIndex + 1}</h3>
+                <h3 style="margin-top:0; color:#00205b;">Main Question / Stimulus Block ${qIndex + 1}</h3>
                 <label><b>Stimulus / Documents (Images Supported!):</b></label>
                 <div class="editor-container" id="stimulus-editor-${qIndex}"></div>
                 <div id="parts-container-${qIndex}"></div>
@@ -226,11 +214,12 @@
         function generateLink() {
             const title = document.getElementById('exam-title').value || 'Bleubook FRQ';
             const sheetUrl = document.getElementById('sheet-url').value;
+            const tType = document.getElementById('timer-type').value;
+            const tLimit = document.getElementById('time-limit').value;
             
-            if (!sheetUrl) {
-                alert("You MUST provide your Google Web App URL to save exams with images.");
-                return;
-            }
+            if (!sheetUrl) { alert("You MUST provide your Google Web App URL to save exams."); return; }
+
+            localStorage.setItem('bleubook_teacher_url', sheetUrl);
 
             const btn = document.getElementById('generate-btn');
             btn.innerText = "Saving to Database...";
@@ -238,24 +227,27 @@
 
             const questionsData = [];
             for (let i = 0; i < teacherStimulusEditors.length; i++) {
-                const stimulusHTML = teacherStimulusEditors[i].root.innerHTML;
                 const partsData = [];
                 for (let j = 0; j < teacherPromptEditors[i].length; j++) {
                     partsData.push(teacherPromptEditors[i][j].root.innerHTML);
                 }
-                questionsData.push({ stimulus: stimulusHTML, prompts: partsData });
+                questionsData.push({ 
+                    stimulus: teacherStimulusEditors[i].root.innerHTML, 
+                    prompts: partsData 
+                });
             }
 
             const payload = {
                 action: "saveExam",
-                examData: { title: title, questions: questionsData }
+                examData: { 
+                    title: title, 
+                    timerType: tType,
+                    timeLimit: parseInt(tLimit) || 0,
+                    questions: questionsData 
+                }
             };
 
-            fetch(sheetUrl, {
-                method: 'POST',
-                body: JSON.stringify(payload),
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-            })
+            fetch(sheetUrl, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' }})
             .then(res => res.json())
             .then(data => {
                 if (data.examId) {
@@ -275,88 +267,144 @@
             });
         }
 
+        /* --- STUDENT FUNCTIONS --- */
+        
         function fetchStudentExam(examId, sheetUrl) {
-            const payload = { action: "getExam", examId: examId };
-
-            fetch(sheetUrl, {
-                method: 'POST',
-                body: JSON.stringify(payload),
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-            })
+            fetch(sheetUrl, { method: 'POST', body: JSON.stringify({ action: "getExam", examId: examId }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }})
             .then(res => res.json())
             .then(data => {
-                if(data.error) {
-                    document.getElementById('student-exam-title').innerText = "Exam Not Found";
-                    return;
-                }
+                if(data.error) { document.getElementById('student-exam-title').innerText = "Exam Not Found"; return; }
                 examData = data;
                 document.getElementById('student-exam-title').innerText = examData.title;
                 document.getElementById('exam-container').style.display = 'flex';
                 
-                for(let i=0; i < examData.questions.length; i++) {
-                    studentAnswers.push(new Array(examData.questions[i].prompts.length).fill(""));
+                examInProgress = true; 
+
+                const savedAnswersRaw = localStorage.getItem(`bleubook_answers_${examIdGlobal}`);
+                if (savedAnswersRaw) {
+                    try { studentAnswers = JSON.parse(savedAnswersRaw); } 
+                    catch (e) { studentAnswers = null; }
+                }
+
+                if (!studentAnswers || studentAnswers.length !== examData.questions.length) {
+                    studentAnswers = [];
+                    for(let i=0; i < examData.questions.length; i++) {
+                        studentAnswers.push(new Array(examData.questions[i].prompts.length).fill(""));
+                    }
                 }
                 
+                if (examData.timerType === 'down') {
+                    isCountDown = true;
+                    timeRemainingOrElapsed = examData.timeLimit * 60; 
+                } else {
+                    isCountDown = false;
+                    timeRemainingOrElapsed = 0;
+                }
+                
+                renderEntireExam();
                 startTimer();
-                renderQuestion(0);
             })
-            .catch(err => {
-                document.getElementById('student-exam-title').innerText = "Database Connection Error";
+            .catch(err => { document.getElementById('student-exam-title').innerText = "Database Connection Error"; });
+        }
+
+        function countWords(str) {
+            const text = str.replace(/<[^>]*>?/gm, ' ').trim();
+            return text ? text.split(/\s+/).length : 0;
+        }
+
+        function renderEntireExam() {
+            const leftPane = document.getElementById('student-stimulus');
+            const rightPane = document.getElementById('student-parts-container');
+            
+            leftPane.innerHTML = ''; 
+            rightPane.innerHTML = ''; 
+            studentEditors = []; 
+            
+            examData.questions.forEach((q, qIndex) => {
+                const stimDiv = document.createElement('div');
+                stimDiv.className = 'student-stimulus-block';
+                if (examData.questions.length > 1) { stimDiv.innerHTML = `<h3 style="color:#00205b;">Stimulus ${qIndex + 1}</h3>`; }
+                stimDiv.innerHTML += q.stimulus;
+                leftPane.appendChild(stimDiv);
+                
+                q.prompts.forEach((promptHTML, pIndex) => {
+                    const partDiv = document.createElement('div');
+                    partDiv.className = 'student-part-container';
+                    partDiv.innerHTML = `
+                        <div class="student-prompt">${promptHTML}</div>
+                        <div id="student-editor-${qIndex}-${pIndex}" class="student-answer-editor"></div>
+                        <div id="word-count-${qIndex}-${pIndex}" class="word-count">0 words</div>
+                    `;
+                    rightPane.appendChild(partDiv);
+                    
+                    const qEditor = new Quill(`#student-editor-${qIndex}-${pIndex}`, {
+                        theme: 'snow',
+                        placeholder: 'Type your response here...',
+                        modules: { toolbar: [ ['bold', 'italic', 'underline'], [{ 'list': 'bullet' }] ] }
+                    });
+                    
+                    if (studentAnswers[qIndex] && studentAnswers[qIndex][pIndex]) {
+                        qEditor.root.innerHTML = studentAnswers[qIndex][pIndex];
+                        document.getElementById(`word-count-${qIndex}-${pIndex}`).innerText = countWords(qEditor.root.innerHTML) + " words";
+                    }
+
+                    qEditor.on('text-change', () => { 
+                        studentAnswers[qIndex][pIndex] = qEditor.root.innerHTML; 
+                        localStorage.setItem(`bleubook_answers_${examIdGlobal}`, JSON.stringify(studentAnswers));
+                        document.getElementById(`word-count-${qIndex}-${pIndex}`).innerText = countWords(qEditor.root.innerHTML) + " words";
+                    });
+                    studentEditors.push(qEditor);
+                });
             });
         }
 
         function startTimer() {
+            updateTimerDisplay(); 
             timerInterval = setInterval(() => {
-                secondsElapsed++;
-                let m = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
-                let s = (secondsElapsed % 60).toString().padStart(2, '0');
-                document.getElementById('timer').innerText = `${m}:${s}`;
+                if (isCountDown) {
+                    if (timeRemainingOrElapsed <= 0) {
+                        clearInterval(timerInterval);
+                        lockEditors();
+                        return;
+                    }
+                    timeRemainingOrElapsed--;
+                } else {
+                    timeRemainingOrElapsed++;
+                }
+                updateTimerDisplay();
             }, 1000);
         }
 
-        function renderQuestion(index) {
-            currentQuestionIndex = index;
-            const q = examData.questions[index];
-            document.getElementById('student-stimulus').innerHTML = q.stimulus;
+        function updateTimerDisplay() {
+            let m = Math.floor(timeRemainingOrElapsed / 60).toString().padStart(2, '0');
+            let s = (timeRemainingOrElapsed % 60).toString().padStart(2, '0');
             
-            const partsContainer = document.getElementById('student-parts-container');
-            partsContainer.innerHTML = ''; 
-            studentEditors = []; 
-            
-            for (let i = 0; i < q.prompts.length; i++) {
-                const partDiv = document.createElement('div');
-                partDiv.className = 'student-part-container';
-                partDiv.innerHTML = `
-                    <div class="student-prompt">${q.prompts[i]}</div>
-                    <div id="student-editor-${i}" class="student-answer-editor"></div>
-                `;
-                partsContainer.appendChild(partDiv);
-                
-                const qEditor = new Quill(`#student-editor-${i}`, {
-                    theme: 'snow',
-                    placeholder: 'Type your response here...',
-                    modules: { toolbar: [ ['bold', 'italic', 'underline'], [{ 'list': 'bullet' }] ] }
-                });
-                
-                if (studentAnswers[index][i]) qEditor.root.innerHTML = studentAnswers[index][i];
-                qEditor.on('text-change', () => { studentAnswers[currentQuestionIndex][i] = qEditor.root.innerHTML; });
-                studentEditors.push(qEditor);
-            }
-            
-            document.getElementById('question-tracker').innerText = `Question ${index + 1} of ${examData.questions.length}`;
-            document.getElementById('prev-btn').disabled = (index === 0);
-            
-            if (index === examData.questions.length - 1) {
-                document.getElementById('next-btn').classList.add('hidden');
-                document.getElementById('finish-btn').classList.remove('hidden');
-            } else {
-                document.getElementById('next-btn').classList.remove('hidden');
-                document.getElementById('finish-btn').classList.add('hidden');
+            const timerSpan = document.getElementById('timer');
+            if (timerVisible) {
+                timerSpan.innerText = `${m}:${s}`;
             }
         }
-
-        function nextQuestion() { if (currentQuestionIndex < examData.questions.length - 1) renderQuestion(currentQuestionIndex + 1); }
-        function prevQuestion() { if (currentQuestionIndex > 0) renderQuestion(currentQuestionIndex - 1); }
+        
+        function toggleTimer() {
+            timerVisible = !timerVisible;
+            const timerSpan = document.getElementById('timer');
+            const btn = document.getElementById('toggle-timer-btn');
+            
+            if (timerVisible) {
+                updateTimerDisplay();
+                btn.innerText = "Hide";
+                timerSpan.style.opacity = "1";
+            } else {
+                timerSpan.innerText = "--:--";
+                btn.innerText = "Show";
+                timerSpan.style.opacity = "0.5";
+            }
+        }
+        
+        function lockEditors() {
+            studentEditors.forEach(editor => editor.disable());
+            alert("Time is up! Your text boxes have been locked. Please submit your exam now.");
+        }
 
         function showSubmission() {
             document.getElementById('submit-modal').classList.remove('hidden');
@@ -382,29 +430,41 @@
             
             for (let q = 0; q < examData.questions.length; q++) {
                 for (let p = 0; p < examData.questions[q].prompts.length; p++) {
-                    flatPrompts.push(`Q${q+1}: ` + examData.questions[q].prompts[p].replace(/<[^>]*>?/gm, ' ').trim());
-                    flatAnswers.push((studentAnswers[q][p] || "").replace(/<[^>]*>?/gm, ' ').trim());
+                    let cleanPromptText = examData.questions[q].prompts[p].replace(/<[^>]*>?/gm, ' ').trim();
+                    let cleanAnswerText = (studentAnswers[q][p] || "").replace(/<[^>]*>?/gm, ' ').trim();
+                    
+                    if (examData.questions.length > 1) {
+                        flatPrompts.push(`Q${q+1} - ${cleanPromptText}`);
+                    } else {
+                        flatPrompts.push(cleanPromptText);
+                    }
+                    flatAnswers.push(cleanAnswerText);
                 }
             }
+
+            // Capture exact timer state at submission
+            let submitM = Math.floor(timeRemainingOrElapsed / 60).toString().padStart(2, '0');
+            let submitS = (timeRemainingOrElapsed % 60).toString().padStart(2, '0');
+            let finalTimerValue = `${submitM}:${submitS}`;
 
             const payload = {
                 action: "submitAnswers",
                 studentName: name,
                 examTitle: examData.title,
+                timerAtSubmission: finalTimerValue,
                 prompts: flatPrompts,
                 responses: flatAnswers
             };
 
-            fetch(globalSheetUrl, {
-                method: 'POST',
-                body: JSON.stringify(payload),
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' } 
-            })
+            fetch(globalSheetUrl, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } })
             .then(response => response.json())
             .then(data => {
                 statusLabel.innerText = "Success! Your exam has been securely submitted.";
                 statusLabel.style.color = "#28a745";
                 document.getElementById('submit-final-btn').classList.add('hidden');
+                
+                examInProgress = false; 
+                localStorage.removeItem(`bleubook_answers_${examIdGlobal}`);
             })
             .catch(err => {
                 statusLabel.innerText = "Network Error submitting. Please alert your teacher.";

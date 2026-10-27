@@ -10,8 +10,8 @@ Exams are stored in a Google Sheet through an Apps Script web app, so exams can 
 
 - **One-time database setup:** In any Google Sheet, open Extensions > Apps Script, paste in the Database version of the `doPost` code (it handles three actions: `saveExam`, `getExam`, `submitAnswers`), and deploy it as a Web app (Execute as: Me, Who has access: Anyone). Copy the Web App URL. When the script code changes, redeploy with Deploy > Manage deployments > Edit > New Version > Deploy so the URL stays the same.
 - **Teacher setup:** Open the site, paste in the Web App URL (required), and build the exam: each main question has a stimulus/document pane (shown on the left for students, images supported) and one or more prompt parts (shown on the right), all edited with a rich text editor.
-- **Student link:** "Save Exam & Generate Student Link" saves the exam to the sheet's `Exam_Database` tab and returns a short link (`?id=EXAM-...&url=...`). Students open it and the exam loads from the sheet into the split-screen testing view with a timer, question navigation, and autosaved answers.
-- **Grading:** Student submissions post back to the same sheet, one tab per exam title, with a timestamp, the student's name, and one column per prompt.
+- **Student link:** "Save Exam & Generate Student Link" saves the exam to the sheet's `Exam_Database` tab and returns a short link (`?id=EXAM-...&url=...`). Students open it and the exam loads from the sheet into a single scrolling split view (all stimuli on the left, all prompts on the right). Teachers pick a count-up stopwatch or a count-down timer with a minute limit that auto-locks the answer boxes at zero; students can hide the timer, see a live word count per answer, and their answers autosave in the browser so a refresh does not lose work.
+- **Grading:** Student submissions post back to the same sheet, one tab per exam title, with a timestamp, the student name, one column per prompt, plus Score and Teacher Feedback columns for grading.
 
 ## Files
 
