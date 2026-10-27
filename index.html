@@ -104,6 +104,7 @@
                     <li>Click <b>Deploy</b>. Google will ask you to review the permissions and allow them; this is your own script asking to work with your spreadsheet, so allow it. If you are signed in to more than one Google account, choose the one that owns the sheet.</li>
                     <li><b>Copy the Web App URL and paste it into the box above.</b> The Web App URL starts with https://script.google.com/macros/s/ and ends with /exec. If the address you copied is your spreadsheet's address, that is the wrong one; the Web App URL is the one shown in the deployment window.</li>
                 </ol>
+                <p style="margin-bottom: 0;"><b>Do not press Run to test it.</b> The code only wakes up when the Bleubook site sends it something, so running it by hand in the script editor shows an error about postData. That error is expected and harmless. To check your setup, paste your Web App URL into a browser tab instead. You should see a short message saying the database is connected.</p>
                 <p style="margin-bottom: 0;"><b>Keep your Web App URL.</b> The setup page remembers it in this browser, but the URL is your way back in from any other browser or computer: it is how you reach your saved exams and your students' responses. If you lose it, open your sheet, go to Extensions, Apps Script, then Deploy, Manage deployments, and copy it from there.</p>
                 <p style="margin-bottom: 0;">Your saved exams are listed at the bottom of this page whenever your Web App URL is filled in, each with its student link. "Use again" gives the same exam a fresh link and its own grading tab, tagged with the school year, so last year's exam can run again next year without mixing the two years' submissions.</p>
                 <p style="margin-bottom: 0;">Loading an exam back into setup: paste a student link or an Exam ID into the "Load an Exam Into Setup" box and the whole exam fills into the form, ready to edit and save as a new exam. Your saved exams below also have an "Edit in setup" button that does the same thing. If the exam has an access code, type it in that box's access code field. A setup code from another teacher pastes into the same box; the "Share This Exam as a Setup Code" button turns whatever is in your form into one of those codes.</p>
@@ -157,7 +158,14 @@ function findExam_(dbSheet, examId) {
   return null;
 }
 
+function doGet() {
+  return ContentService.createTextOutput("Bleubook database is connected. This address only answers requests from the Bleubook website, so there is nothing to do here. You can close this tab.");
+}
+
 function doPost(e) {
+  if (!e || !e.postData || !e.postData.contents) {
+    return ContentService.createTextOutput("Bleubook database is connected, but it only answers requests from the Bleubook website. If you pressed Run in the script editor and saw an error about postData, that is expected and harmless. Nothing is broken.");
+  }
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var data = JSON.parse(e.postData.contents);
   var dbSheet = getDbSheet_(ss);

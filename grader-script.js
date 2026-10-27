@@ -44,7 +44,14 @@ function findExam_(dbSheet, examId) {
   return null;
 }
 
+function doGet() {
+  return ContentService.createTextOutput("Bleubook database is connected. This address only answers requests from the Bleubook website, so there is nothing to do here. You can close this tab.");
+}
+
 function doPost(e) {
+  if (!e || !e.postData || !e.postData.contents) {
+    return ContentService.createTextOutput("Bleubook database is connected, but it only answers requests from the Bleubook website. If you pressed Run in the script editor and saw an error about postData, that is expected and harmless. Nothing is broken.");
+  }
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var data = JSON.parse(e.postData.contents);
   var dbSheet = getDbSheet_(ss);
