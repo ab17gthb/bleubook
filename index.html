@@ -72,8 +72,9 @@
             </div>
         </div>
         
-        <div style="border: 1px solid #d7defc; background: #f6f8fe; border-radius: 6px; padding: 18px 20px; margin: 10px 0 22px;">
-            <h3 style="margin-top: 0; color: #324dc7;">Load an Exam Into Setup</h3>
+        <details class="tutorial-details" id="load-share-details" style="background: #f6f8fe; border-left-color: #324dc7; margin-top: 10px;">
+            <summary style="color: #324dc7;">Load an Exam or Share a Setup Code (Click to expand)</summary>
+            <h3 style="color: #324dc7;">Load an Exam Into Setup</h3>
             <p style="color:#555; font-size: 0.95em; margin-top: 0;">Paste a student link, an Exam ID from your sheet, or a setup code from another teacher. The exam's title, timer, stimuli, and prompts fill in below so you can edit them and save as a new exam.</p>
             <label><b>Paste link, Exam ID, or setup code:</b></label>
             <textarea id="load-input" rows="3" placeholder="Paste here..." style="width: 100%;"></textarea>
@@ -86,7 +87,7 @@
             <p style="color:#555; font-size: 0.95em; margin-top: 0;">Turn the exam currently in the form into a code you can give another teacher. They paste it above and get your title, timer, stimuli, and prompts in their own setup. The code includes your access code if you set one above, so clear that field first if you do not want to share it.</p>
             <button class="btn btn-secondary" style="width: 100%; margin: 0;" onclick="copySetupCode()">Copy Setup Code for This Exam</button>
             <p id="share-status" style="margin-bottom: 0; color:#555;"></p>
-        </div>
+        </details>
 
         <details class="tutorial-details">
             <summary>How to set up the Google Sheets Database (Click to expand)</summary>
@@ -728,6 +729,7 @@ function bleubookBuildExport() {
         }
 
         function editExamInSetup(exam, sheetUrl) {
+            document.getElementById('load-share-details').open = true;
             document.getElementById('sheet-url').value = sheetUrl;
             document.getElementById('load-input').value = exam.id;
             document.getElementById('load-code').value = '';
