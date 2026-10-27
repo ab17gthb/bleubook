@@ -72,6 +72,22 @@
             </div>
         </div>
         
+        <div style="border: 1px solid #d7defc; background: #f6f8fe; border-radius: 6px; padding: 18px 20px; margin: 10px 0 22px;">
+            <h3 style="margin-top: 0; color: #324dc7;">Load an Exam Into Setup</h3>
+            <p style="color:#555; font-size: 0.95em; margin-top: 0;">Paste a student link, an Exam ID from your sheet, or a setup code from another teacher. The exam's title, timer, stimuli, and prompts fill in below so you can edit them and save as a new exam.</p>
+            <label><b>Paste link, Exam ID, or setup code:</b></label>
+            <textarea id="load-input" rows="3" placeholder="Paste here..." style="width: 100%;"></textarea>
+            <label><b>Access code (only if that exam has one):</b></label>
+            <input type="text" id="load-code" placeholder="Leave blank if the exam has no code">
+            <button class="btn" style="width: 100%; margin: 0;" onclick="loadIntoSetup()">Load Into Setup</button>
+            <p id="load-status" style="margin-bottom: 0; color:#555;"></p>
+            <hr style="border: 1px solid #e3e8fb; margin: 18px 0;">
+            <h3 style="margin-top: 0; color: #324dc7;">Share This Exam as a Setup Code</h3>
+            <p style="color:#555; font-size: 0.95em; margin-top: 0;">Turn the exam currently in the form into a code you can give another teacher. They paste it above and get your title, timer, stimuli, and prompts in their own setup. The code includes your access code if you set one above, so clear that field first if you do not want to share it.</p>
+            <button class="btn btn-secondary" style="width: 100%; margin: 0;" onclick="copySetupCode()">Copy Setup Code for This Exam</button>
+            <p id="share-status" style="margin-bottom: 0; color:#555;"></p>
+        </div>
+
         <details class="tutorial-details">
             <summary>How to set up the Google Sheets Database (Click to expand)</summary>
             <div style="margin-top: 15px; line-height: 1.6;">
@@ -85,6 +101,7 @@
                 </ol>
                 <p style="margin-bottom: 0;"><b>Keep your Web App URL.</b> The setup page remembers it in this browser, but the URL is your way back in from any other browser or computer: it is how you reach your saved exams and your students' responses. If you lose it, open your sheet, go to Extensions, Apps Script, then Deploy, Manage deployments, and copy it from there.</p>
                 <p style="margin-bottom: 0;">Your saved exams are listed at the bottom of this page whenever your Web App URL is filled in, each with its student link. "Use again" gives the same exam a fresh link and its own grading tab, tagged with the school year, so last year's exam can run again next year without mixing the two years' submissions.</p>
+                <p style="margin-bottom: 0;">Loading an exam back into setup: paste a student link or an Exam ID into the "Load an Exam Into Setup" box and the whole exam fills into the form, ready to edit and save as a new exam. Your saved exams below also have an "Edit in setup" button that does the same thing. If the exam has an access code, type it in that box's access code field. A setup code from another teacher pastes into the same box; the "Share This Exam as a Setup Code" button turns whatever is in your form into one of those codes.</p>
                 <p style="margin-bottom: 0;">Already deployed an older version? Paste this code over the old code, save, then use <b>Deploy > Manage deployments > Edit (pencil icon) > New Version > Deploy</b> so your Web App URL stays the same.</p>
                 <p style="margin-bottom: 0;">Grading: each exam tab is set up for anonymous grading. Students submit with their name and class period; the sheet shows a random Student ID and keeps names hidden in the last column. Each response gets a 0, 1, or 2 score selector beside it (green for points earned, red for zero, gray while ungraded), and the Total fills in on its own. When you are done, the <b>Bleubook</b> menu in the sheet can reveal the names sorted by period, and build a clean gradebook export tab with the class average.</p>
                 <div class="code-block">
@@ -371,9 +388,15 @@ function bleubookBuildExport() {
         <div id="library-section" class="hidden" style="margin-top: 35px;">
             <hr style="border: 1px solid #eee; margin: 30px 0;">
             <h2>Your Saved Exams</h2>
-            <p style="color:#555; font-size: 0.95em;">These live in your Google Sheet. Copy a student link to hand an exam out again as-is, or choose "Use again" to give the same exam a fresh link and its own grading tab for a new year.</p>
+            <p style="color:#555; font-size: 0.95em;">These live in your Google Sheet. Copy a student link to hand an exam out again as-is, choose "Use again" to give the same exam a fresh link and its own grading tab for a new year, or choose "Edit in setup" to pull it back into the form and change it first.</p>
             <div id="library-list"></div>
             <p id="library-status" style="color:#555;"></p>
+            <div id="reuse-code-row" class="hidden" style="border: 1px solid #d7defc; background: #f6f8fe; border-radius: 6px; padding: 12px 15px; margin-bottom: 10px;">
+                <p id="reuse-code-text" style="margin-top: 0; color:#555;"></p>
+                <input type="text" id="reuse-code-input" placeholder="Access code" style="margin-bottom: 10px;">
+                <button class="btn" style="margin: 0 8px 0 0;" onclick="confirmReuseWithCode()">Make the copy</button>
+                <button class="btn btn-secondary" style="margin: 0;" onclick="cancelReuseWithCode()">Cancel</button>
+            </div>
         </div>
     </div>
 
@@ -511,6 +534,27 @@ function bleubookBuildExport() {
             teacherPromptEditors[qIndex].push(promptQuill);
         }
 
+        function buildExamDataFromSetup() {
+            const questionsData = [];
+            for (let i = 0; i < teacherStimulusEditors.length; i++) {
+                const partsData = [];
+                for (let j = 0; j < teacherPromptEditors[i].length; j++) {
+                    partsData.push(teacherPromptEditors[i][j].root.innerHTML);
+                }
+                questionsData.push({
+                    stimulus: teacherStimulusEditors[i].root.innerHTML,
+                    prompts: partsData
+                });
+            }
+            return {
+                title: document.getElementById('exam-title').value || 'Bleubook FRQ',
+                timerType: document.getElementById('timer-type').value,
+                timeLimit: parseInt(document.getElementById('time-limit').value) || 0,
+                accessCode: document.getElementById('exam-code').value.trim(),
+                questions: questionsData
+            };
+        }
+
         function generateLink() {
             const title = document.getElementById('exam-title').value || 'Bleubook FRQ';
             const sheetUrl = document.getElementById('sheet-url').value;
@@ -525,27 +569,9 @@ function bleubookBuildExport() {
             btn.innerText = "Saving to Database...";
             btn.disabled = true;
 
-            const questionsData = [];
-            for (let i = 0; i < teacherStimulusEditors.length; i++) {
-                const partsData = [];
-                for (let j = 0; j < teacherPromptEditors[i].length; j++) {
-                    partsData.push(teacherPromptEditors[i][j].root.innerHTML);
-                }
-                questionsData.push({ 
-                    stimulus: teacherStimulusEditors[i].root.innerHTML, 
-                    prompts: partsData 
-                });
-            }
-
             const payload = {
                 action: "saveExam",
-                examData: { 
-                    title: title, 
-                    timerType: tType,
-                    timeLimit: parseInt(tLimit) || 0,
-                    accessCode: document.getElementById('exam-code').value.trim(),
-                    questions: questionsData 
-                }
+                examData: buildExamDataFromSetup()
             };
 
             fetch(sheetUrl, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' }})
@@ -567,6 +593,147 @@ function bleubookBuildExport() {
                 btn.innerText = "Save Exam & Generate Student Link";
                 btn.disabled = false;
             });
+        }
+
+        /* --- LOAD INTO SETUP + SETUP CODES --- */
+
+        function fillSetupFromExam(exam, codeValue) {
+            document.getElementById('exam-title').value = exam.title || '';
+            document.getElementById('exam-code').value = codeValue || '';
+            document.getElementById('timer-type').value = exam.timerType || 'up';
+            document.getElementById('time-limit').value = exam.timeLimit || 45;
+            toggleTimerInput();
+            const builder = document.getElementById('questions-builder');
+            builder.innerHTML = '';
+            teacherStimulusEditors = [];
+            teacherPromptEditors = [];
+            const questions = (exam.questions && exam.questions.length) ? exam.questions : [{ stimulus: '', prompts: [''] }];
+            questions.forEach(q => {
+                addQuestion();
+                const qi = teacherStimulusEditors.length - 1;
+                teacherStimulusEditors[qi].root.innerHTML = q.stimulus || '';
+                const prompts = (q.prompts && q.prompts.length) ? q.prompts : [''];
+                for (let j = 1; j < prompts.length; j++) { addPart(qi); }
+                prompts.forEach((p, pj) => { teacherPromptEditors[qi][pj].root.innerHTML = p || ''; });
+            });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function bytesToBase64Url(bytes) {
+            let bin = '';
+            const chunkSize = 0x8000;
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+                bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+            }
+            return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+
+        function base64UrlToBytes(text) {
+            let b64 = text.replace(/-/g, '+').replace(/_/g, '/');
+            while (b64.length % 4) { b64 += '='; }
+            const bin = atob(b64);
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) { bytes[i] = bin.charCodeAt(i); }
+            return bytes;
+        }
+
+        async function encodeSetupCode(examData) {
+            const bytes = new TextEncoder().encode(JSON.stringify(examData));
+            if (window.CompressionStream) {
+                try {
+                    const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'));
+                    const gz = new Uint8Array(await new Response(stream).arrayBuffer());
+                    if (gz.length < bytes.length) { return 'BLEUBOOK1G:' + bytesToBase64Url(gz); }
+                } catch (e) { /* fall through to the plain encoding */ }
+            }
+            return 'BLEUBOOK1:' + bytesToBase64Url(bytes);
+        }
+
+        async function decodeSetupCode(text) {
+            const isGz = text.indexOf('BLEUBOOK1G:') === 0;
+            const body = text.substring(text.indexOf(':') + 1).replace(/\s/g, '');
+            let bytes = base64UrlToBytes(body);
+            if (isGz) {
+                const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+                bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+            }
+            return JSON.parse(new TextDecoder().decode(bytes));
+        }
+
+        async function copySetupCode() {
+            const status = document.getElementById('share-status');
+            status.innerText = "Building your setup code...";
+            try {
+                const code = await encodeSetupCode(buildExamDataFromSetup());
+                const input = document.getElementById('load-input');
+                input.value = code;
+                input.select();
+                let copied = false;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    try { await navigator.clipboard.writeText(code); copied = true; } catch (e) { copied = false; }
+                }
+                status.innerText = (copied ? "Setup code copied. " : "Setup code is in the box above, ready to copy. ") + "It is " + code.length.toLocaleString() + " characters long. Anyone with the code can load this exam into their own setup.";
+            } catch (e) {
+                status.innerText = "The setup code could not be built. Try again.";
+            }
+        }
+
+        async function loadIntoSetup() {
+            const status = document.getElementById('load-status');
+            const raw = document.getElementById('load-input').value.trim();
+            if (!raw) { status.innerText = "Paste a student link, an Exam ID, or a setup code first."; return; }
+            if (raw.indexOf('BLEUBOOK1') === 0) {
+                status.innerText = "Reading the setup code...";
+                try {
+                    const exam = await decodeSetupCode(raw);
+                    fillSetupFromExam(exam, exam.accessCode || '');
+                    status.innerText = "Loaded \"" + (exam.title || 'Untitled Exam') + "\" into setup. Edit anything, then choose Save Exam & Generate Student Link.";
+                } catch (e) {
+                    status.innerText = "That setup code could not be read. Check that the whole code was pasted.";
+                }
+                return;
+            }
+            let examId = '';
+            let pastedUrl = '';
+            if (raw.indexOf('?') >= 0) {
+                try {
+                    const u = new URL(raw, window.location.href);
+                    examId = u.searchParams.get('id') || '';
+                    pastedUrl = u.searchParams.get('url') || '';
+                } catch (e) { /* fall back to the ID search below */ }
+            }
+            if (!examId) {
+                const idMatch = raw.match(/EXAM-\d+/);
+                if (idMatch) { examId = idMatch[0]; }
+            }
+            if (pastedUrl) { document.getElementById('sheet-url').value = pastedUrl; }
+            const sheetUrl = document.getElementById('sheet-url').value.trim();
+            if (!sheetUrl) { status.innerText = "Add your Google Web App URL above first, or paste a full student link (it carries the URL)."; return; }
+            if (!examId) { status.innerText = "No Exam ID found in what you pasted."; return; }
+            localStorage.setItem('bleubook_teacher_url', sheetUrl);
+            const code = document.getElementById('load-code').value.trim();
+            status.innerText = "Loading that exam...";
+            const body = { action: "getExam", examId: examId };
+            if (code) { body.code = code; }
+            fetch(sheetUrl, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'text/plain;charset=utf-8' }})
+            .then(res => res.json())
+            .then(data => {
+                if (data.error === "code_required") { status.innerText = "That exam has an access code. Type it in the access code box here and load again."; return; }
+                if (data.error === "wrong_code") { status.innerText = "That access code is not right for this exam. Check it and load again."; return; }
+                if (data.error) { status.innerText = "That exam could not be found in this sheet."; return; }
+                fillSetupFromExam(data, code);
+                status.innerText = "Loaded \"" + (data.title || 'Untitled Exam') + "\" into setup. Edit anything, then choose Save Exam & Generate Student Link.";
+            })
+            .catch(err => { status.innerText = "Loading failed. Check the Web App URL and try again."; });
+        }
+
+        function editExamInSetup(exam, sheetUrl) {
+            document.getElementById('sheet-url').value = sheetUrl;
+            document.getElementById('load-input').value = exam.id;
+            document.getElementById('load-code').value = '';
+            document.getElementById('load-status').innerText = '';
+            document.getElementById('load-input').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            loadIntoSetup();
         }
 
         /* --- LIBRARY FUNCTIONS --- */
@@ -626,12 +793,18 @@ function bleubookBuildExport() {
                             window.prompt("Copy this student link:", link);
                         }
                     };
+                    const editBtn = document.createElement('button');
+                    editBtn.className = "btn btn-secondary";
+                    editBtn.style.margin = "0 8px 0 0";
+                    editBtn.innerText = "Edit in setup";
+                    editBtn.onclick = () => editExamInSetup(exam, sheetUrl);
                     const reuseBtn = document.createElement('button');
                     reuseBtn.className = "btn btn-secondary";
                     reuseBtn.style.margin = "0";
                     reuseBtn.innerText = "Use again";
                     reuseBtn.onclick = () => reuseExam(exam, sheetUrl);
                     btnWrap.appendChild(copyBtn);
+                    btnWrap.appendChild(editBtn);
                     btnWrap.appendChild(reuseBtn);
                     row.appendChild(titleSpan);
                     row.appendChild(btnWrap);
@@ -644,6 +817,8 @@ function bleubookBuildExport() {
             });
         }
 
+        let pendingReuse = null;
+
         function reuseExam(exam, sheetUrl) {
             const status = document.getElementById('library-status');
             status.innerText = "Preparing a fresh copy of \"" + exam.title + "\"...";
@@ -652,22 +827,7 @@ function bleubookBuildExport() {
                 if (code) { body.code = code; }
                 return fetch(sheetUrl, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'text/plain;charset=utf-8' }}).then(res => res.json());
             };
-            attempt(undefined)
-            .then(data => {
-                if (data.error === "code_required" || data.error === "wrong_code") {
-                    const code = window.prompt("This exam has an access code. Enter it to make the new copy:");
-                    if (!code) { status.innerText = ""; return null; }
-                    return attempt(code).then(d2 => {
-                        if (d2.error) { status.innerText = "That code did not work, so no copy was made."; return null; }
-                        d2.accessCode = code;
-                        return d2;
-                    });
-                }
-                if (data.error) { status.innerText = "That exam could not be loaded, so no copy was made."; return null; }
-                return data;
-            })
-            .then(examData => {
-                if (!examData) { return; }
+            const finish = (examData) => {
                 examData.title = examData.title + " (" + schoolYearLabel() + ")";
                 return fetch(sheetUrl, { method: 'POST', body: JSON.stringify({ action: "saveExam", examData: examData }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }})
                 .then(res => res.json())
@@ -681,8 +841,46 @@ function bleubookBuildExport() {
                         status.innerText = "The copy could not be saved. Try again.";
                     }
                 });
+            };
+            attempt(undefined)
+            .then(data => {
+                if (data.error === "code_required" || data.error === "wrong_code") {
+                    pendingReuse = { exam: exam, attempt: attempt, finish: finish };
+                    document.getElementById('reuse-code-text').innerText = "\"" + exam.title + "\" has an access code. Type it here to make the copy (the copy keeps the same code):";
+                    document.getElementById('reuse-code-input').value = '';
+                    document.getElementById('reuse-code-row').classList.remove('hidden');
+                    document.getElementById('reuse-code-row').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    status.innerText = "";
+                    return;
+                }
+                if (data.error) { status.innerText = "That exam could not be loaded, so no copy was made."; return; }
+                finish(data);
             })
             .catch(err => { status.innerText = "Something went wrong making the copy. Try again."; });
+        }
+
+        function confirmReuseWithCode() {
+            if (!pendingReuse) { return; }
+            const status = document.getElementById('library-status');
+            const code = document.getElementById('reuse-code-input').value.trim();
+            if (!code) { status.innerText = "Type the access code first."; return; }
+            const attempt = pendingReuse.attempt;
+            const finish = pendingReuse.finish;
+            attempt(code)
+            .then(d2 => {
+                if (d2.error) { status.innerText = "That code did not work, so no copy was made."; return; }
+                d2.accessCode = code;
+                document.getElementById('reuse-code-row').classList.add('hidden');
+                pendingReuse = null;
+                finish(d2);
+            })
+            .catch(err => { status.innerText = "Something went wrong making the copy. Try again."; });
+        }
+
+        function cancelReuseWithCode() {
+            pendingReuse = null;
+            document.getElementById('reuse-code-row').classList.add('hidden');
+            document.getElementById('library-status').innerText = "";
         }
 
         /* --- STUDENT FUNCTIONS --- */

@@ -44,3 +44,19 @@ https://script.google.com/macros/s/AKfycbxmmKbYwHgYaVMsDClzRYjNn6RhnR8c3cPcs9kFn
 - After appendRow, the script overwrites the timer cell with setNumberFormat("@") + setValue(String(...)). Fresh exam "Plain Text Timer Fix Test" (EXAM-678093590): B2 grid 01:13 and formula bar 01:13 — plain text, no time-of-day conversion. This technique is baked into the final grading script (grader-script.js).
 - The same test incidentally confirmed the live front end's new period field works (submission required a numeric period).
 - Final step launched 2026-10-27: replace the sheet's script with grader-script.js (access code gate, anonymous grading, 0/1/2 color scores, totals, Bleubook menu with reveal + gradebook export) and verify end to end.
+
+## Grading build (script Version 7) — FULLY VERIFIED 2026-10-27 09:52 ET, zero failures
+- Code gate: wrong code "wrong1" rejected with "That code is not right. Check with your teacher and try again."; hawks27 opened the exam.
+- Submissions: Test Student One (Period 2, timer 00:29) and Test Student Two (Period 1, timer 00:30) both "Success! Your exam has been securely submitted."
+- Tab "Grading Build Test" headers: Timestamp | Timer at Submission | Period | Student ID | Part A prompt | Score: Part 1 | Part B prompt | Score: Part 2 | Total | Teacher Feedback | Student Name (hidden; column letters jumped J to L). IDs S-6479 and S-2278, distinct. Timer B2 formula bar plain text 00:29. Totals blank pre-grading with the COUNTA-guarded formula.
+- Scoring: 2 -> green #d9ead3; 0 -> red #f4cccc; blank -> gray #e0e0e0; Total computed 2.
+- Bleubook menu present after reload. Export tab sorted Period 1 (Student Two, blank total) then Period 2 (Student One, total 2); class summary Average 2, Highest 2, Lowest 2, Scores entered 1. Reveal unhid names and re-sorted by Period then name.
+- Launched same morning: swap test sheet to the chunked-storage/title/library script + verification (oversized exam with FINAL SENTINEL check, library listing, Use again incl. the code-prompt path).
+
+## Version 8 verification (2026-10-27, browser task ran 9:54–10:12 AM EDT)
+
+- Script replaced with the chunked-storage version and redeployed as Version 8; Web App URL unchanged (verified exactly).
+- Migration PASS: Exam_Database header is now Exam ID | Exam Title | Exam Data; legacy rows have titles filled in (Database Test Exam, Score Columns Test, Timer Column Test, Plain Text Timer Test, Plain Text Timer Fix Test, Grading Build Test).
+- Oversized exam PASS: "Oversized Exam Test" (EXAM-47700262) built with ~201 copies of the railroad paragraph (58,000+ characters) ending in "FINAL SENTINEL: The last wagon crossed in 1869." Saved successfully; student view showed the FINAL SENTINEL at the bottom of the stimulus, proving full reassembly with no truncation. Submission by Test Student, Period 3 returned "Success! Your exam has been securely submitted." Database row spans columns A–D (chunks in C and D; E empty).
+- Use again (no code) PASS: "Oversized Exam Test (2026-27)" created with fresh link (EXAM-204612749); the copy loads with the full stimulus.
+- Use again (with access code) NOT YET VERIFIED: clicking Use again on "Grading Build Test" (code hawks27) depends on a window.prompt dialog that the automated browser cannot operate; the prompt never surfaces and no copy is made. Awaiting Alex doing that one click in person, then the remaining checks are: "Grading Build Test (2026-27)" appears in the library with a fresh EXAM id, its link opens, hawks27 entered in the on-page code gate opens the exam.
