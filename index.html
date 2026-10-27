@@ -221,7 +221,12 @@
         
         function toggleTimerInput() {
             const type = document.getElementById('timer-type').value;
-            document.getElementById('time-limit-container').style.display = type === 'down' ? 'block' : 'none';
+            const container = document.getElementById('time-limit-container');
+            if (type === 'down') {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
         }
 
         function addQuestion() {
@@ -496,7 +501,6 @@
                 }
             }
 
-            // Capture exact timer state at submission
             let submitM = Math.floor(timeRemainingOrElapsed / 60).toString().padStart(2, '0');
             let submitS = (timeRemainingOrElapsed % 60).toString().padStart(2, '0');
             let finalTimerValue = `${submitM}:${submitS}`;
