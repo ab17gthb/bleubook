@@ -60,3 +60,15 @@ https://script.google.com/macros/s/AKfycbxmmKbYwHgYaVMsDClzRYjNn6RhnR8c3cPcs9kFn
 - Oversized exam PASS: "Oversized Exam Test" (EXAM-47700262) built with ~201 copies of the railroad paragraph (58,000+ characters) ending in "FINAL SENTINEL: The last wagon crossed in 1869." Saved successfully; student view showed the FINAL SENTINEL at the bottom of the stimulus, proving full reassembly with no truncation. Submission by Test Student, Period 3 returned "Success! Your exam has been securely submitted." Database row spans columns A–D (chunks in C and D; E empty).
 - Use again (no code) PASS: "Oversized Exam Test (2026-27)" created with fresh link (EXAM-204612749); the copy loads with the full stimulus.
 - Use again (with access code) NOT YET VERIFIED: clicking Use again on "Grading Build Test" (code hawks27) depends on a window.prompt dialog that the automated browser cannot operate; the prompt never surfaces and no copy is made. Awaiting Alex doing that one click in person, then the remaining checks are: "Grading Build Test (2026-27)" appears in the library with a fresh EXAM id, its link opens, hawks27 entered in the on-page code gate opens the exam.
+
+## Loader + setup code verification (2026-10-27, browser task ran 10:30–10:32 AM EDT)
+
+Alex approved "Build both" (load into setup + shareable setup code). Site-only change, no script change; deployed to bleubook.web.app (live bytes match source) and pushed to ab17gthb/bleubook (commit 33086d4). The Use again window.prompt was replaced with an inline code field in the library. All 5 steps PASSED:
+
+1. Load by student link: pasted the Database Test Exam link; status "Loaded \"Database Test Exam\" into setup."; title, stimulus ("Document 1: Notes on the assembly line."), and prompt filled.
+2. Edit in setup: Score Columns Test loaded from its library button with contents filled.
+3. Setup code round trip: generated code was 241 characters (BLEUBOOK1 prefix); after changing the title to ZZZ TEMP, loading the code restored "Score Columns Test".
+4. Code-locked load: Edit in setup on Grading Build Test first reported it has an access code; typing hawks27 in the loader's code field loaded it fully.
+5. Coded Use again (the step that previously failed): inline code box appeared, hawks27 accepted, "Grading Build Test (2026-27)" created with fresh link (EXAM-615028919); the copy's student link shows the code gate and hawks27 opens the exam. This closes the last open verification item from the Version 8 run.
+
+Push incident note: the changed-files push helper defaulted to the rycal repo and briefly put the Bleubook commit on rycal main; rycal main was force-reset to the prior commit (9e4bf604) and verified, then Bleubook was pushed to its own repo and verified. The helper now takes the repo as an explicit argument.
