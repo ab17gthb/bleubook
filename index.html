@@ -52,7 +52,7 @@
         <input type="text" id="exam-title" placeholder="e.g., APUSH Unit 4 DBQ">
         
         <label><b>Google Apps Script Web App URL:</b></label>
-        <input type="url" id="sheet-url" placeholder="Paste your Web App URL here...">
+        <input type="url" id="sheet-url" placeholder="Paste your Web App URL here..." onchange="if(this.value) { loadLibrary(this.value); }">
         <p style="margin-top: -12px; font-size: 0.9em; color: #555;">Keep this URL saved somewhere. It is how you reach your saved exams and student responses from any browser or computer.</p>
         
         <label><b>Access Code (optional):</b></label>
@@ -84,59 +84,107 @@
                     <li>Click Deploy, authorize the permissions, and <b>copy the Web App URL and paste it into the box above!</b></li>
                 </ol>
                 <p style="margin-bottom: 0;"><b>Keep your Web App URL.</b> The setup page remembers it in this browser, but the URL is your way back in from any other browser or computer: it is how you reach your saved exams and your students' responses. If you lose it, open your sheet, go to Extensions, Apps Script, then Deploy, Manage deployments, and copy it from there.</p>
+                <p style="margin-bottom: 0;">Your saved exams are listed at the bottom of this page whenever your Web App URL is filled in, each with its student link. "Use again" gives the same exam a fresh link and its own grading tab, tagged with the school year, so last year's exam can run again next year without mixing the two years' submissions.</p>
                 <p style="margin-bottom: 0;">Already deployed an older version? Paste this code over the old code, save, then use <b>Deploy > Manage deployments > Edit (pencil icon) > New Version > Deploy</b> so your Web App URL stays the same.</p>
                 <p style="margin-bottom: 0;">Grading: each exam tab is set up for anonymous grading. Students submit with their name and class period; the sheet shows a random Student ID and keeps names hidden in the last column. Each response gets a 0, 1, or 2 score selector beside it (green for points earned, red for zero, gray while ungraded), and the Total fills in on its own. When you are done, the <b>Bleubook</b> menu in the sheet can reveal the names sorted by period, and build a clean gradebook export tab with the class average.</p>
                 <div class="code-block">
-<pre style="margin:0;">function doPost(e) {
+<pre style="margin:0;">var DB_HEADERS = ["Exam ID", "Exam Title", "Exam Data"];
+var CHUNK_SIZE = 45000;
+
+function getDbSheet_(ss) {
+  var dbSheet = ss.getSheetByName("Exam_Database");
+  if (!dbSheet) {
+    dbSheet = ss.insertSheet("Exam_Database");
+    dbSheet.appendRow(DB_HEADERS);
+    return dbSheet;
+  }
+  // Migrate the original two-column layout (Exam ID | Exam Data) by inserting a Title column.
+  if (dbSheet.getLastRow() >= 1 &amp;&amp; dbSheet.getRange(1, 2).getValue() === "Exam Data") {
+    dbSheet.insertColumnAfter(1);
+    dbSheet.getRange(1, 2).setValue("Exam Title");
+    var lastRow = dbSheet.getLastRow();
+    if (lastRow > 1) {
+      var dataVals = dbSheet.getRange(2, 3, lastRow - 1, 1).getValues();
+      for (var i = 0; i &lt; dataVals.length; i++) {
+        var title = "";
+        try { title = JSON.parse(dataVals[i][0]).title || ""; } catch (e) { title = ""; }
+        dbSheet.getRange(2 + i, 2).setValue(title);
+      }
+    }
+  }
+  return dbSheet;
+}
+
+function examJsonFromRow_(rowValues) {
+  // Exam data is stored in chunks from column C (index 2) onward, each under the 50,000 character cell limit.
+  var s = "";
+  for (var c = 2; c &lt; rowValues.length; c++) {
+    if (rowValues[c]) { s += rowValues[c]; }
+  }
+  return s;
+}
+
+function findExam_(dbSheet, examId) {
+  var records = dbSheet.getDataRange().getValues();
+  for (var i = 1; i &lt; records.length; i++) {
+    if (records[i][0] === examId) {
+      try { return JSON.parse(examJsonFromRow_(records[i])); } catch (e) { return null; }
+    }
+  }
+  return null;
+}
+
+function doPost(e) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var data = JSON.parse(e.postData.contents);
+  var dbSheet = getDbSheet_(ss);
 
   if (data.action === "saveExam") {
-    var dbSheet = ss.getSheetByName("Exam_Database");
-    if (!dbSheet) {
-      dbSheet = ss.insertSheet("Exam_Database");
-      dbSheet.appendRow(["Exam ID", "Exam Data"]);
-    }
     var examId = "EXAM-" + Math.floor(Math.random() * 1000000000);
-    dbSheet.appendRow([examId, JSON.stringify(data.examData)]);
+    var json = JSON.stringify(data.examData);
+    var row = [examId, (data.examData &amp;&amp; data.examData.title) || "Untitled Exam"];
+    for (var i = 0; i &lt; json.length; i += CHUNK_SIZE) { row.push(json.substring(i, i + CHUNK_SIZE)); }
+    dbSheet.appendRow(row);
     return ContentService.createTextOutput(JSON.stringify({"status": "success", "examId": examId})).setMimeType(ContentService.MimeType.JSON);
   }
 
-  if (data.action === "getExam") {
-    var dbSheet = ss.getSheetByName("Exam_Database");
+  if (data.action === "listExams") {
     var records = dbSheet.getDataRange().getValues();
+    var exams = [];
     for (var i = 1; i &lt; records.length; i++) {
-      if (records[i][0] === data.examId) {
-        var exam = JSON.parse(records[i][1]);
-        if (exam.accessCode) {
-          if (!data.code) {
-            return ContentService.createTextOutput(JSON.stringify({"error": "code_required"})).setMimeType(ContentService.MimeType.JSON);
-          }
-          if (String(data.code).trim().toLowerCase() !== String(exam.accessCode).trim().toLowerCase()) {
-            return ContentService.createTextOutput(JSON.stringify({"error": "wrong_code"})).setMimeType(ContentService.MimeType.JSON);
-          }
-        }
-        delete exam.accessCode;
-        return ContentService.createTextOutput(JSON.stringify(exam)).setMimeType(ContentService.MimeType.JSON);
+      var exam = null;
+      try { exam = JSON.parse(examJsonFromRow_(records[i])); } catch (e) { exam = null; }
+      exams.push({
+        id: records[i][0],
+        title: records[i][1] || (exam &amp;&amp; exam.title) || "Untitled Exam",
+        hasCode: !!(exam &amp;&amp; exam.accessCode)
+      });
+    }
+    return ContentService.createTextOutput(JSON.stringify({"exams": exams})).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (data.action === "getExam") {
+    var exam = findExam_(dbSheet, data.examId);
+    if (!exam) {
+      return ContentService.createTextOutput(JSON.stringify({"error": "Exam not found"})).setMimeType(ContentService.MimeType.JSON);
+    }
+    if (exam.accessCode) {
+      if (!data.code) {
+        return ContentService.createTextOutput(JSON.stringify({"error": "code_required"})).setMimeType(ContentService.MimeType.JSON);
+      }
+      if (String(data.code).trim().toLowerCase() !== String(exam.accessCode).trim().toLowerCase()) {
+        return ContentService.createTextOutput(JSON.stringify({"error": "wrong_code"})).setMimeType(ContentService.MimeType.JSON);
       }
     }
-    return ContentService.createTextOutput(JSON.stringify({"error": "Exam not found"})).setMimeType(ContentService.MimeType.JSON);
+    delete exam.accessCode;
+    return ContentService.createTextOutput(JSON.stringify(exam)).setMimeType(ContentService.MimeType.JSON);
   }
 
   if (data.action === "submitAnswers") {
     if (data.examId) {
-      var lookupSheet = ss.getSheetByName("Exam_Database");
-      if (lookupSheet) {
-        var rows = lookupSheet.getDataRange().getValues();
-        for (var i = 1; i &lt; rows.length; i++) {
-          if (rows[i][0] === data.examId) {
-            var storedExam = JSON.parse(rows[i][1]);
-            if (storedExam.accessCode &amp;&amp; String(data.code || "").trim().toLowerCase() !== String(storedExam.accessCode).trim().toLowerCase()) {
-              return ContentService.createTextOutput(JSON.stringify({"error": "wrong_code"})).setMimeType(ContentService.MimeType.JSON);
-            }
-            break;
-          }
-        }
+      var storedExam = findExam_(dbSheet, data.examId);
+      if (storedExam &amp;&amp; storedExam.accessCode &amp;&amp; String(data.code || "").trim().toLowerCase() !== String(storedExam.accessCode).trim().toLowerCase()) {
+        return ContentService.createTextOutput(JSON.stringify({"error": "wrong_code"})).setMimeType(ContentService.MimeType.JSON);
       }
     }
     var examTitle = data.examTitle || "Untitled Exam";
@@ -319,6 +367,14 @@ function bleubookBuildExport() {
         
         <button class="btn btn-success" style="width: 100%; font-size: 18px; padding: 15px;" id="generate-btn" onclick="generateLink()">Save Exam & Generate Student Link</button>
         <div id="link-output" style="margin-top:25px; word-break: break-all; font-weight:bold; color: #324dc7; background: #eef6fc; padding: 15px; border-radius: 5px; display: none;"></div>
+
+        <div id="library-section" class="hidden" style="margin-top: 35px;">
+            <hr style="border: 1px solid #eee; margin: 30px 0;">
+            <h2>Your Saved Exams</h2>
+            <p style="color:#555; font-size: 0.95em;">These live in your Google Sheet. Copy a student link to hand an exam out again as-is, or choose "Use again" to give the same exam a fresh link and its own grading tab for a new year.</p>
+            <div id="library-list"></div>
+            <p id="library-status" style="color:#555;"></p>
+        </div>
     </div>
 
     <!-- STUDENT SIMULATOR VIEW -->
@@ -390,7 +446,7 @@ function bleubookBuildExport() {
                 fetchStudentExam(examId, globalSheetUrl, remembered || undefined);
             } else {
                 const savedUrl = localStorage.getItem('bleubook_teacher_url');
-                if (savedUrl) { document.getElementById('sheet-url').value = savedUrl; }
+                if (savedUrl) { document.getElementById('sheet-url').value = savedUrl; loadLibrary(savedUrl); }
                 addQuestion(); 
             }
         };
@@ -501,6 +557,7 @@ function bleubookBuildExport() {
                     const outputDiv = document.getElementById('link-output');
                     outputDiv.style.display = 'block';
                     outputDiv.innerHTML = `Exam Saved! Share this short link with students:<br><br><a href="${link}" target="_blank" style="color:#0077c8;">${link}</a>`;
+                    loadLibrary(sheetUrl);
                 }
                 btn.innerText = "Save Exam & Generate Student Link";
                 btn.disabled = false;
@@ -510,6 +567,122 @@ function bleubookBuildExport() {
                 btn.innerText = "Save Exam & Generate Student Link";
                 btn.disabled = false;
             });
+        }
+
+        /* --- LIBRARY FUNCTIONS --- */
+
+        function schoolYearLabel() {
+            const now = new Date();
+            const start = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+            return start + "-" + String(start + 1).slice(2);
+        }
+
+        function studentLinkFor(examId, sheetUrl) {
+            const cleanBaseUrl = window.location.href.split('?')[0];
+            return `${cleanBaseUrl}?id=${examId}&url=${encodeURIComponent(sheetUrl)}`;
+        }
+
+        function showLinkMessage(html) {
+            const outputDiv = document.getElementById('link-output');
+            outputDiv.style.display = 'block';
+            outputDiv.innerHTML = html;
+            outputDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function loadLibrary(sheetUrl) {
+            if (!sheetUrl) { return; }
+            const section = document.getElementById('library-section');
+            const list = document.getElementById('library-list');
+            const status = document.getElementById('library-status');
+            section.classList.remove('hidden');
+            status.innerText = "Loading your saved exams...";
+            fetch(sheetUrl, { method: 'POST', body: JSON.stringify({ action: "listExams" }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }})
+            .then(res => res.json())
+            .then(data => {
+                list.innerHTML = '';
+                if (!data.exams) { throw new Error("no library"); }
+                if (data.exams.length === 0) {
+                    status.innerText = "No exams saved in this sheet yet. Build one above and it will appear here.";
+                    return;
+                }
+                status.innerText = "";
+                data.exams.forEach(exam => {
+                    const row = document.createElement('div');
+                    row.style.cssText = "display:flex; justify-content:space-between; align-items:center; gap:15px; border:1px solid #e0e0e0; border-radius:6px; padding:12px 15px; margin-bottom:10px;";
+                    const titleSpan = document.createElement('span');
+                    titleSpan.style.fontWeight = "bold";
+                    titleSpan.textContent = exam.title;
+                    const btnWrap = document.createElement('span');
+                    btnWrap.style.whiteSpace = "nowrap";
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = "btn btn-secondary";
+                    copyBtn.style.margin = "0 8px 0 0";
+                    copyBtn.innerText = "Copy student link";
+                    copyBtn.onclick = () => {
+                        const link = studentLinkFor(exam.id, sheetUrl);
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(link).then(() => { copyBtn.innerText = "Copied!"; setTimeout(() => { copyBtn.innerText = "Copy student link"; }, 2000); });
+                        } else {
+                            window.prompt("Copy this student link:", link);
+                        }
+                    };
+                    const reuseBtn = document.createElement('button');
+                    reuseBtn.className = "btn btn-secondary";
+                    reuseBtn.style.margin = "0";
+                    reuseBtn.innerText = "Use again";
+                    reuseBtn.onclick = () => reuseExam(exam, sheetUrl);
+                    btnWrap.appendChild(copyBtn);
+                    btnWrap.appendChild(reuseBtn);
+                    row.appendChild(titleSpan);
+                    row.appendChild(btnWrap);
+                    list.appendChild(row);
+                });
+            })
+            .catch(err => {
+                list.innerHTML = '';
+                status.innerText = "The library needs the latest script code in your sheet. Follow the setup steps above to update it, then reload this page.";
+            });
+        }
+
+        function reuseExam(exam, sheetUrl) {
+            const status = document.getElementById('library-status');
+            status.innerText = "Preparing a fresh copy of \"" + exam.title + "\"...";
+            const attempt = (code) => {
+                const body = { action: "getExam", examId: exam.id };
+                if (code) { body.code = code; }
+                return fetch(sheetUrl, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'text/plain;charset=utf-8' }}).then(res => res.json());
+            };
+            attempt(undefined)
+            .then(data => {
+                if (data.error === "code_required" || data.error === "wrong_code") {
+                    const code = window.prompt("This exam has an access code. Enter it to make the new copy:");
+                    if (!code) { status.innerText = ""; return null; }
+                    return attempt(code).then(d2 => {
+                        if (d2.error) { status.innerText = "That code did not work, so no copy was made."; return null; }
+                        d2.accessCode = code;
+                        return d2;
+                    });
+                }
+                if (data.error) { status.innerText = "That exam could not be loaded, so no copy was made."; return null; }
+                return data;
+            })
+            .then(examData => {
+                if (!examData) { return; }
+                examData.title = examData.title + " (" + schoolYearLabel() + ")";
+                return fetch(sheetUrl, { method: 'POST', body: JSON.stringify({ action: "saveExam", examData: examData }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }})
+                .then(res => res.json())
+                .then(saved => {
+                    if (saved.examId) {
+                        const link = studentLinkFor(saved.examId, sheetUrl);
+                        showLinkMessage(`Fresh copy saved as "${examData.title}". Share this new link with students:<br><br><a href="${link}" target="_blank" style="color:#0077c8;">${link}</a>`);
+                        status.innerText = "";
+                        loadLibrary(sheetUrl);
+                    } else {
+                        status.innerText = "The copy could not be saved. Try again.";
+                    }
+                });
+            })
+            .catch(err => { status.innerText = "Something went wrong making the copy. Try again."; });
         }
 
         /* --- STUDENT FUNCTIONS --- */

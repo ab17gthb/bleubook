@@ -39,3 +39,8 @@ https://script.google.com/macros/s/AKfycbxmmKbYwHgYaVMsDClzRYjNn6RhnR8c3cPcs9kFn
 ## Plain-text timer, attempt 1 (script Version 5) — FAILED verification 2026-10-27 09:25 ET
 - Added sheet.getRange("B:B").setNumberFormat("@") at tab creation and redeployed as Version 5 (URL unchanged). Fresh exam "Plain Text Timer Test" (EXAM-934194219): B2 grid showed 0:32 but the formula bar still showed 12:32:00 AM. appendRow re-parses the value as a time regardless of the preset column format.
 - Attempt 2 (in progress): after appendRow, overwrite the timer cell explicitly with setNumberFormat("@") + setValue(String(...)), redeploy, and re-verify with a fresh tab.
+
+## Plain-text timer, attempt 2 (script Version 6) — VERIFIED 2026-10-27 09:38 ET
+- After appendRow, the script overwrites the timer cell with setNumberFormat("@") + setValue(String(...)). Fresh exam "Plain Text Timer Fix Test" (EXAM-678093590): B2 grid 01:13 and formula bar 01:13 — plain text, no time-of-day conversion. This technique is baked into the final grading script (grader-script.js).
+- The same test incidentally confirmed the live front end's new period field works (submission required a numeric period).
+- Final step launched 2026-10-27: replace the sheet's script with grader-script.js (access code gate, anonymous grading, 0/1/2 color scores, totals, Bleubook menu with reveal + gradebook export) and verify end to end.
