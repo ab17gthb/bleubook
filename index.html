@@ -433,7 +433,7 @@ function bleubookBuildExport() {
             <h2 style="color: #324dc7; margin-top: 0;">Enter Access Code</h2>
             <p>Your teacher will give you a code to open this exam.</p>
             <input type="text" id="code-input" placeholder="Access code">
-            <button class="btn btn-success" style="width: 100%;" onclick="submitCode()">Open Exam</button>
+            <button class="btn btn-success" id="open-exam-btn" style="width: 100%;" onclick="submitCode()">Open Exam</button>
             <p id="code-status" style="margin-top: 15px; font-weight: bold; color: #dc3545;"></p>
         </div>
         <div class="footer">
@@ -469,6 +469,11 @@ function bleubookBuildExport() {
         let timeRemainingOrElapsed = 0;
         let isCountDown = false;
         let timerVisible = true;
+        let timerStartAtMs = null;
+        let timerEndAtMs = null;
+        let timerExpired = false;
+        let studentExamLoadInFlight = false;
+        let studentExamLoaded = false;
 
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -928,7 +933,15 @@ function bleubookBuildExport() {
 
         /* --- STUDENT FUNCTIONS --- */
         
+        function setStudentLoadBusy(isBusy) {
+            const btn = document.getElementById('open-exam-btn');
+            if (btn) { btn.disabled = isBusy; btn.innerText = isBusy ? "Opening..." : "Open Exam"; }
+            const input = document.getElementById('code-input');
+            if (input) { input.disabled = isBusy; }
+        }
+
         function submitCode() {
+            if (studentExamLoaded || studentExamLoadInFlight) { return; }
             const code = document.getElementById('code-input').value.trim();
             if (!code) { document.getElementById('code-status').innerText = "Type the code from your teacher first."; return; }
             document.getElementById('code-status').innerText = "";
@@ -936,12 +949,17 @@ function bleubookBuildExport() {
         }
 
         function fetchStudentExam(examId, sheetUrl, code) {
+            if (studentExamLoaded || studentExamLoadInFlight) { return; }
+            studentExamLoadInFlight = true;
+            setStudentLoadBusy(true);
             const body = { action: "getExam", examId: examId };
             if (code) { body.code = code; }
             fetch(sheetUrl, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'text/plain;charset=utf-8' }})
             .then(res => res.json())
             .then(data => {
                 if (data.error === "code_required" || data.error === "wrong_code") {
+                    studentExamLoadInFlight = false;
+                    setStudentLoadBusy(false);
                     document.getElementById('student-exam-title').innerText = "Locked Exam";
                     document.getElementById('code-gate').classList.remove('hidden');
                     if (data.error === "wrong_code") {
@@ -950,7 +968,15 @@ function bleubookBuildExport() {
                     }
                     return;
                 }
-                if(data.error) { document.getElementById('student-exam-title').innerText = "Exam Not Found"; return; }
+                if(data.error) {
+                    studentExamLoadInFlight = false;
+                    setStudentLoadBusy(false);
+                    document.getElementById('student-exam-title').innerText = "Exam Not Found";
+                    return;
+                }
+                studentExamLoaded = true;
+                studentExamLoadInFlight = false;
+                setStudentLoadBusy(false);
                 enteredCode = code || "";
                 if (code) { sessionStorage.setItem(`bleubook_code_${examId}`, code); }
                 document.getElementById('code-gate').classList.add('hidden');
@@ -973,18 +999,16 @@ function bleubookBuildExport() {
                     }
                 }
                 
-                if (examData.timerType === 'down') {
-                    isCountDown = true;
-                    timeRemainingOrElapsed = examData.timeLimit * 60; 
-                } else {
-                    isCountDown = false;
-                    timeRemainingOrElapsed = 0;
-                }
+                initializeTimerForExam();
                 
                 renderEntireExam();
                 startTimer();
             })
-            .catch(err => { document.getElementById('student-exam-title').innerText = "Database Connection Error"; });
+            .catch(err => {
+                studentExamLoadInFlight = false;
+                setStudentLoadBusy(false);
+                document.getElementById('student-exam-title').innerText = "Database Connection Error";
+            });
         }
 
         function countWords(str) {
@@ -1038,21 +1062,77 @@ function bleubookBuildExport() {
             });
         }
 
+        function timerStorageKey() {
+            return `bleubook_timer_${examIdGlobal}`;
+        }
+
+        function readStoredTimerState() {
+            try {
+                const raw = localStorage.getItem(timerStorageKey());
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function storeTimerState() {
+            try {
+                localStorage.setItem(timerStorageKey(), JSON.stringify({
+                    mode: isCountDown ? 'down' : 'up',
+                    limitSeconds: isCountDown ? examData.timeLimit * 60 : null,
+                    startedAtMs: timerStartAtMs,
+                    endAtMs: timerEndAtMs
+                }));
+            } catch (e) { /* If storage is unavailable, the in-page wall clock still controls this session. */ }
+        }
+
+        function clearStoredTimerState() {
+            try { localStorage.removeItem(timerStorageKey()); } catch (e) {}
+        }
+
+        function initializeTimerForExam() {
+            isCountDown = examData.timerType === 'down';
+            timerExpired = false;
+            const limitSeconds = isCountDown ? examData.timeLimit * 60 : null;
+            const stored = readStoredTimerState();
+            const storedIsValid = stored && stored.mode === (isCountDown ? 'down' : 'up') && Number.isFinite(stored.startedAtMs) && (!isCountDown || (stored.limitSeconds === limitSeconds && Number.isFinite(stored.endAtMs)));
+
+            if (storedIsValid) {
+                timerStartAtMs = stored.startedAtMs;
+                timerEndAtMs = isCountDown ? stored.endAtMs : null;
+            } else {
+                timerStartAtMs = Date.now();
+                timerEndAtMs = isCountDown ? timerStartAtMs + (limitSeconds * 1000) : null;
+                storeTimerState();
+            }
+            refreshTimerFromClock();
+        }
+
+        function refreshTimerFromClock() {
+            const now = Date.now();
+            if (isCountDown) {
+                timeRemainingOrElapsed = Number.isFinite(timerEndAtMs) ? Math.max(0, Math.ceil((timerEndAtMs - now) / 1000)) : 0;
+                return timeRemainingOrElapsed <= 0;
+            }
+            timeRemainingOrElapsed = Number.isFinite(timerStartAtMs) ? Math.max(0, Math.floor((now - timerStartAtMs) / 1000)) : 0;
+            return false;
+        }
+
         function startTimer() {
-            updateTimerDisplay(); 
+            if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+            const expired = refreshTimerFromClock();
+            updateTimerDisplay();
+            if (expired) { lockEditors(); return; }
+
             timerInterval = setInterval(() => {
-                if (isCountDown) {
-                    if (timeRemainingOrElapsed <= 0) {
-                        clearInterval(timerInterval);
-                        lockEditors();
-                        return;
-                    }
-                    timeRemainingOrElapsed--;
-                } else {
-                    timeRemainingOrElapsed++;
-                }
+                const nowExpired = refreshTimerFromClock();
                 updateTimerDisplay();
-            }, 1000);
+                if (nowExpired) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                    lockEditors();
+                }
+            }, 250);
         }
 
         function updateTimerDisplay() {
@@ -1083,7 +1163,10 @@ function bleubookBuildExport() {
         
         function lockEditors() {
             studentEditors.forEach(editor => editor.disable());
-            alert("Time is up! Your text boxes have been locked. Please submit your exam now.");
+            if (!timerExpired) {
+                timerExpired = true;
+                alert("Time is up! Your text boxes have been locked. Please submit your exam now.");
+            }
         }
 
         function showSubmission() {
@@ -1097,8 +1180,11 @@ function bleubookBuildExport() {
             if (blanks.length > 0) {
                 if (!confirm(`These parts are blank: ${blanks.join(', ')}. Submit anyway?`)) { return; }
             }
+            const expired = refreshTimerFromClock();
+            updateTimerDisplay();
+            if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+            if (expired) { lockEditors(); }
             document.getElementById('submit-modal').classList.remove('hidden');
-            clearInterval(timerInterval);
         }
 
         function submitToSheets() {
@@ -1164,6 +1250,7 @@ function bleubookBuildExport() {
                 
                 examInProgress = false; 
                 localStorage.removeItem(`bleubook_answers_${examIdGlobal}`);
+                clearStoredTimerState();
             })
             .catch(err => {
                 statusLabel.innerText = "Network Error submitting. Please alert your teacher.";
